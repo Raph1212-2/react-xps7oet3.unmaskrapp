@@ -720,16 +720,25 @@ const Signup = ({ goTo, onSignupComplete }) => {
       return;
     }
     const userId = data.user.id;
-    await supabase.from("profiles").insert({
-      id: userId,
-      name: form.name,
-      username: form.username,
-      country: form.country,
-      dob: form.dob,
-      gender: form.gender,
-      age_group: form.ageGroup,
-      email: form.email,
-    });
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .insert({
+        id: userId,
+        name: form.name,
+        username: form.username,
+        country: form.country,
+        dob: form.dob,
+        gender: form.gender,
+        age_group: form.ageGroup,
+        email: form.email,
+      });
+
+    if (profileError) {
+      setSignupError("Couldn't save your profile: " + profileError.message);
+      setLoading(false);
+      return;
+    }
+
     await supabase.from("wallets").insert({
       user_id: userId,
       balance: 0,
