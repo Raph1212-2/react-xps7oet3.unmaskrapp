@@ -707,19 +707,7 @@ const Signup = ({ goTo, onSignupComplete }) => {
   const [verifying, setVerifying] = useState(false);
   const [resendMsg, setResendMsg] = useState("");
 
-  const handleSignup = async () => {
-    setLoading(true);
-    setSignupError("");
-    const { data, error } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-    });
-    if (error) {
-      setSignupError(error.message);
-      setLoading(false);
-      return;
-    }
-    const userId = data.user.id;
+  const saveProfileAndWallet = async (userId) => {
     const { error: profileError } = await supabase
       .from("profiles")
       .insert({
@@ -732,25 +720,38 @@ const Signup = ({ goTo, onSignupComplete }) => {
         age_group: form.ageGroup,
         email: form.email,
       });
+    if (profileError) return profileError;
 
-    if (profileError) {
-      setSignupError("Couldn't save your profile: " + profileError.message);
+    await supabase.from("wallets").insert({ user_id: userId, balance: 0 });
+    return null;
+  };
+
+  const handleSignup = async () => {
+    setLoading(true);
+    setSignupError("");
+    const { data, error } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+    });
+    if (error) {
+      setSignupError(error.message);
       setLoading(false);
       return;
     }
 
-    await supabase.from("wallets").insert({
-      user_id: userId,
-      balance: 0,
-    });
-    setLoading(false);
-    onSignupComplete && onSignupComplete(form);
-
     if (data.session) {
-      // Email confirmation not required on this project — already signed in
+      // No email confirmation required — already fully signed in, so the
+      // profile can be saved right now (auth.uid() resolves correctly).
+      const profileError = await saveProfileAndWallet(data.user.id);
+      setLoading(false);
+      if (profileError) { setSignupError("Couldn't save your profile: " + profileError.message); return; }
+      onSignupComplete && onSignupComplete(form);
       goTo("inbox");
     } else {
-      // Real Supabase Auth session doesn't exist yet until the code is verified
+      // Confirmation required — NOT signed in yet, so saving the profile now
+      // would fail RLS (auth.uid() is null until the code is verified).
+      // Save it after verifyCode succeeds instead.
+      setLoading(false);
       setNeedsConfirmation(true);
     }
   };
@@ -759,13 +760,17 @@ const Signup = ({ goTo, onSignupComplete }) => {
     if (!otpCode.trim()) return;
     setVerifying(true);
     setOtpError("");
-    const { error } = await supabase.auth.verifyOtp({ email: form.email, token: otpCode.trim(), type: "signup" });
+    const { data, error } = await supabase.auth.verifyOtp({ email: form.email, token: otpCode.trim(), type: "signup" });
     if (error) {
       setOtpError(error.message);
       setVerifying(false);
       return;
     }
+    // Now actually signed in — safe to save the profile.
+    const profileError = await saveProfileAndWallet(data.user.id);
     setVerifying(false);
+    if (profileError) { setOtpError("Couldn't save your profile: " + profileError.message); return; }
+    onSignupComplete && onSignupComplete(form);
     goTo("inbox");
   };
 
@@ -2650,8 +2655,15 @@ export default function App() {
     window.history.pushState({}, "", path);
   };
 
+  const [profileFetchError,setProfileFetchError] = useState("");
   const fetchProfile = async (uid) => {
-    const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", uid).single();
+    if (error) {
+      console.error("Profile fetch failed:", error);
+      setProfileFetchError(`${error.message} (code: ${error.code || "none"})`);
+    } else {
+      setProfileFetchError("");
+    }
     if (data) setProfile(data);
   };
 
@@ -2714,5 +2726,15 @@ export default function App() {
     customization: <Customization goTo={goTo} customization={customization} setCustomization={setCustomization}/>,
   };
 
-  return (<><GlobalStyles/>{screens[screen]||screens.landing}</>);
+  return (
+    <>
+      <GlobalStyles/>
+      {profileFetchError && (
+        <div style={{position:"fixed",top:0,left:0,right:0,zIndex:999,background:"#ef4444",color:"white",padding:"10px 16px",fontSize:"0.8rem",textAlign:"center"}}>
+          Profile fetch error: {profileFetchError}
+        </div>
+      )}
+      {screens[screen]||screens.landing}
+    </>
+  );
 }
