@@ -688,7 +688,18 @@ const Landing = ({ goTo }) => {
 };
 
 // ── SIGNUP ─────────────────────────────────────────────────────────────────────
-const Signup = ({ goTo, onSignupComplete }) => {
+const Signup = ({ goTo, onSignupComplete, signupsDisabled }) => {
+  if (signupsDisabled) return (
+    <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+      <div style={{maxWidth:380}}>
+        <Icons.mask size={48}/>
+        <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginTop:20,marginBottom:12}}>Signups paused</h2>
+        <p style={{color:"#888",fontSize:"0.9rem",lineHeight:1.7,marginBottom:24,fontWeight:300}}>We're not accepting new signups right now. Please check back soon.</p>
+        <Btn onClick={()=>goTo("landing")} style={{width:"100%"}}>Back to homepage</Btn>
+      </div>
+    </div>
+  );
+
   const [step,setStep] = useState(1);
   const [form,setForm] = useState({name:"",username:"",email:"",password:"",dob:"",gender:"",ageGroup:"",country:"NG",dobConfirmed:false});
   const [pwErr,setPwErr] = useState("");
@@ -894,9 +905,18 @@ const Login = ({ goTo, onLoginComplete }) => {
     if(!form.email||!form.password) return;
     setLoading(true);
     setErr("");
-    const { error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
     if (error) {
       setErr(error.message==="Invalid login credentials" ? "Wrong email or password, please try again." : error.message);
+      setLoading(false);
+      return;
+    }
+    // Check suspension immediately so a suspended user gets clear feedback
+    // right here, instead of a confusing flash of the app before being kicked out.
+    const { data: prof } = await supabase.from("profiles").select("status").eq("id", data.user.id).single();
+    if (prof?.status === "suspended") {
+      await supabase.auth.signOut();
+      setErr("This account has been suspended. Contact support@unmaskr.com for more information.");
       setLoading(false);
       return;
     }
@@ -1013,7 +1033,7 @@ const Terms = ({ goTo, fromSend, onAccept }) => (
 );
 
 // ── INBOX ──────────────────────────────────────────────────────────────────────
-const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname" }) => {
+const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hintsDisabled=false }) => {
   const cur = currency || CURRENCIES.NG;
   const [messages,setMessages] = useState([]);
   const [loadingMsgs,setLoadingMsgs] = useState(true);
@@ -1217,7 +1237,11 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname" }) =
           )}
 
           <div style={{borderTop:"1px solid rgba(0,0,0,0.07)",paddingTop:20}}>
-            {!showHints?(
+            {hintsDisabled ? (
+              <div style={{textAlign:"center",padding:"12px 14px",background:"#fff8f0",borderRadius:12,border:"1px solid rgba(255,92,58,0.15)"}}>
+                <p style={{fontSize:"0.85rem",color:"#888"}}>Hint purchases are temporarily paused. Check back soon.</p>
+              </div>
+            ) : !showHints?(
               <div style={{textAlign:"center"}}>
                 <div style={{width:48,height:48,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><Icons.lock s={22} c="#0e0e0e"/></div>
                 <p className="syne" style={{fontWeight:700,fontSize:"1rem",marginBottom:6}}>Curious who sent this?</p>
@@ -1459,7 +1483,7 @@ const timeAgoLite = (iso) => {
 };
 
 // ── WALLET ─────────────────────────────────────────────────────────────────────
-const Wallet = ({ goTo, currency, userId, userName }) => {
+const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false }) => {
   const cur = currency || CURRENCIES.NG;
   const [tab,setTab] = useState("overview");
   const [amount,setAmount] = useState("");
@@ -1609,7 +1633,13 @@ const Wallet = ({ goTo, currency, userId, userName }) => {
 
         {tab==="withdraw"&&(
           <div className="fadeUp">
-            {done?(
+            {withdrawalsDisabled ? (
+              <div style={{textAlign:"center",padding:"40px 24px",background:"#fff8f0",borderRadius:16,border:"1px solid rgba(255,92,58,0.15)"}}>
+                <Icons.warning s={28} c="#f97316"/>
+                <p style={{fontWeight:600,marginTop:12,marginBottom:6}}>Withdrawals paused</p>
+                <p style={{fontSize:"0.85rem",color:"#888"}}>Withdrawals are temporarily unavailable. Check back soon.</p>
+              </div>
+            ) : done?(
               <div style={{textAlign:"center",padding:"40px 0"}}>
                 <div style={{width:64,height:64,borderRadius:"50%",background:"#f0fff4",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
                   <Icons.check s={28} c="#16a34a"/>
@@ -1734,7 +1764,7 @@ const Wallet = ({ goTo, currency, userId, userName }) => {
 // NOTE: Mystery Lobby and Stake & Win below are still fully simulated — no real
 // multiplayer backend exists yet (no games/sessions table). Left as-is per the
 // agreed plan; revisit once that backend design is scoped out.
-const Games = ({ goTo }) => (
+const Games = ({ goTo, mysteryFrozen=false, stakeFrozen=false }) => (
   <div style={{minHeight:"100vh",background:"#fafaf8"}}>
     <AppNav goTo={goTo} active="games"/>
     <div style={{maxWidth:700,margin:"0 auto",padding:"40px 24px"}}>
@@ -1744,25 +1774,25 @@ const Games = ({ goTo }) => (
         <p style={{color:"#666",fontSize:"0.9rem",marginBottom:36,fontWeight:300}}>Fun games for picnics, hangouts and sleepovers.</p>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
-        <div className="game-card fadeUp1" onClick={()=>goTo("game-lobby")} style={{background:"white",borderRadius:20,padding:"28px 24px",border:"1px solid rgba(0,0,0,0.08)",cursor:"pointer",transition:"all 0.2s",display:"flex",gap:20,alignItems:"center"}}>
+        <div className="game-card fadeUp1" onClick={()=>!mysteryFrozen&&goTo("game-lobby")} style={{background:"white",borderRadius:20,padding:"28px 24px",border:"1px solid rgba(0,0,0,0.08)",cursor:mysteryFrozen?"not-allowed":"pointer",opacity:mysteryFrozen?0.5:1,transition:"all 0.2s",display:"flex",gap:20,alignItems:"center"}}>
           <div style={{width:64,height:64,borderRadius:18,background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icons.mask size={32}/></div>
           <div style={{flex:1}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
               <h3 className="syne" style={{fontSize:"1.1rem",fontWeight:800}}>Mystery Lobby</h3>
-              <span style={{background:"#0e0e0e",color:"white",fontSize:"0.68rem",fontWeight:700,padding:"3px 10px",borderRadius:50}}>For everyone</span>
+              <span style={{background:mysteryFrozen?"#888":"#0e0e0e",color:"white",fontSize:"0.68rem",fontWeight:700,padding:"3px 10px",borderRadius:50}}>{mysteryFrozen?"Paused":"For everyone"}</span>
             </div>
-            <p style={{fontSize:"0.88rem",color:"#666",lineHeight:1.6,fontWeight:300}}>Host shares a link. Players pick preferences. Guess what others picked or get eliminated!</p>
+            <p style={{fontSize:"0.88rem",color:"#666",lineHeight:1.6,fontWeight:300}}>{mysteryFrozen?"Temporarily unavailable — check back soon.":"Host shares a link. Players pick preferences. Guess what others picked or get eliminated!"}</p>
           </div>
           <Icons.chevron s={20} c="#ccc"/>
         </div>
-        <div className="game-card fadeUp2" onClick={()=>goTo("game-stake")} style={{background:"#0e0e0e",borderRadius:20,padding:"28px 24px",cursor:"pointer",transition:"all 0.2s",display:"flex",gap:20,alignItems:"center"}}>
+        <div className="game-card fadeUp2" onClick={()=>!stakeFrozen&&goTo("game-stake")} style={{background:"#0e0e0e",borderRadius:20,padding:"28px 24px",cursor:stakeFrozen?"not-allowed":"pointer",opacity:stakeFrozen?0.5:1,transition:"all 0.2s",display:"flex",gap:20,alignItems:"center"}}>
           <div style={{width:64,height:64,borderRadius:18,background:"rgba(255,205,60,0.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icons.trophy s={32} c="#ffcd3c"/></div>
           <div style={{flex:1}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
               <h3 className="syne" style={{fontSize:"1.1rem",fontWeight:800,color:"white"}}>Stake & Win</h3>
-              <span style={{background:"#ff5c3a",color:"white",fontSize:"0.68rem",fontWeight:700,padding:"3px 10px",borderRadius:50}}>18+ only</span>
+              <span style={{background:stakeFrozen?"#888":"#ff5c3a",color:"white",fontSize:"0.68rem",fontWeight:700,padding:"3px 10px",borderRadius:50}}>{stakeFrozen?"Paused":"18+ only"}</span>
             </div>
-            <p style={{fontSize:"0.88rem",color:"rgba(255,255,255,0.55)",lineHeight:1.6,fontWeight:300}}>Pick topics, difficulty and question count. Bet real money. Winner takes 85%.</p>
+            <p style={{fontSize:"0.88rem",color:"rgba(255,255,255,0.55)",lineHeight:1.6,fontWeight:300}}>{stakeFrozen?"Temporarily unavailable — check back soon.":"Pick topics, difficulty and question count. Bet real money. Winner takes 85%."}</p>
           </div>
           <Icons.chevron s={20} c="rgba(255,255,255,0.3)"/>
         </div>
@@ -1773,7 +1803,17 @@ const Games = ({ goTo }) => (
 
 // ── MYSTERY LOBBY (still simulated) ────────────────────────────────────────────
 const AVATAR_COLORS = ["#0e0e0e","#ff5c3a","#6366f1","#059669","#d97706","#ec4899"];
-const GameLobby = ({ goTo }) => {
+const GameLobby = ({ goTo, frozen=false }) => {
+  if (frozen) return (
+    <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+      <div style={{maxWidth:380}}>
+        <Icons.mask size={48}/>
+        <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginTop:20,marginBottom:12}}>Mystery Lobby paused</h2>
+        <p style={{color:"#888",fontSize:"0.9rem",lineHeight:1.7,marginBottom:24,fontWeight:300}}>This game is temporarily unavailable. Check back soon.</p>
+        <Btn onClick={()=>goTo("games")} style={{width:"100%"}}>Back to games</Btn>
+      </div>
+    </div>
+  );
   const [phase,setPhase] = useState("setup");
   const [players] = useState([
     {id:1,name:"You (Host)",prefs:["Pizza","Dogs","Netflix"],ready:true},
@@ -1919,10 +1959,21 @@ const GameLobby = ({ goTo }) => {
 };
 
 // ── STAKE & WIN (still simulated) ──────────────────────────────────────────────
-const GameStake = ({ goTo, currency, is18Plus }) => {
+const GameStake = ({ goTo, currency, is18Plus, frozen=false }) => {
   const cur = currency || CURRENCIES.NG;
   const [selfAttested,setSelfAttested] = useState(false);
   const ageKnownAdult = is18Plus===true || selfAttested;
+
+  if (frozen) return (
+    <div style={{minHeight:"100vh",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+      <div style={{maxWidth:380}}>
+        <Icons.trophy s={48} c="#ffcd3c"/>
+        <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,color:"white",marginTop:20,marginBottom:12}}>Stake & Win paused</h2>
+        <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",lineHeight:1.7,marginBottom:24,fontWeight:300}}>This game is temporarily unavailable. Check back soon.</p>
+        <Btn onClick={()=>goTo("games")} style={{width:"100%",background:"#ff5c3a"}}>Back to games</Btn>
+      </div>
+    </div>
+  );
 
   const [phase,setPhase] = useState("setup");
   const [selectedTopics,setSelectedTopics] = useState([]);
@@ -2323,6 +2374,25 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
   const [balance,setBalance] = useState(0);
   const [toggles,setToggles] = useState({messages:true,discover:true,filter:true,emailNotif:false,newMsg:true,gameInvite:true,hintNotif:false,updates:false});
   const [darkMode,setDarkMode] = useState("auto");
+  const [contactSubject,setContactSubject] = useState("Payment issue");
+  const [contactMessage,setContactMessage] = useState("");
+  const [contactSubmitting,setContactSubmitting] = useState(false);
+  const [contactSubmitted,setContactSubmitted] = useState(false);
+
+  const submitComplaint = async () => {
+    if (!contactMessage.trim() || !userId) return;
+    setContactSubmitting(true);
+    const priority = contactSubject === "Safety concern" ? "high" : "medium";
+    const { error } = await supabase.from("complaints").insert({
+      user_id: userId,
+      subject: contactSubject,
+      message: contactMessage.trim(),
+      status: "open",
+      priority,
+    });
+    setContactSubmitting(false);
+    if (!error) { setContactSubmitted(true); setContactMessage(""); }
+  };
 
   useEffect(() => {
     setName(profile?.name||""); setUsername(profile?.username||""); setGender(profile?.gender||""); setEmail(profile?.email||"");
@@ -2479,10 +2549,18 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
         <h2 className="syne" style={{fontSize:"1.5rem",fontWeight:800,marginBottom:8}}>We're here to help</h2>
         <p style={{color:"#888",fontSize:"0.9rem",fontWeight:300}}>Usually reply within 24 hours.</p>
       </div>
+      {contactSubmitted ? (
+        <div style={{textAlign:"center",padding:"24px",background:"#f0fff4",borderRadius:16,border:"1px solid #86efac"}}>
+          <Icons.check s={28} c="#16a34a"/>
+          <p style={{fontWeight:600,marginTop:10,marginBottom:4}}>Message sent!</p>
+          <p style={{fontSize:"0.85rem",color:"#666"}}>We'll get back to you within 24 hours.</p>
+        </div>
+      ) : (
+      <>
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
         <div>
           <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Subject</label>
-          <select style={{width:"100%",padding:"14px 18px",borderRadius:14,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"0.95rem",cursor:"pointer"}}>
+          <select value={contactSubject} onChange={e=>setContactSubject(e.target.value)} style={{width:"100%",padding:"14px 18px",borderRadius:14,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"0.95rem",cursor:"pointer"}}>
             <option>Payment issue</option>
             <option>Account problem</option>
             <option>Report a bug</option>
@@ -2493,10 +2571,14 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
         </div>
         <div>
           <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Message</label>
-          <textarea placeholder="Describe your issue..." rows={5} style={{width:"100%",padding:"14px 16px",borderRadius:14,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"0.95rem",resize:"none",lineHeight:1.6}}/>
+          <textarea placeholder="Describe your issue..." rows={5} value={contactMessage} onChange={e=>setContactMessage(e.target.value)} style={{width:"100%",padding:"14px 16px",borderRadius:14,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"0.95rem",resize:"none",lineHeight:1.6}}/>
         </div>
       </div>
-      <p style={{marginTop:20,fontSize:"0.78rem",color:"#ccc",textAlign:"center"}}>Not wired to send yet — insert a complaint into the `complaints` table here to connect this to your admin dashboard.</p>
+      <Btn onClick={submitComplaint} style={{width:"100%",marginTop:20,padding:"15px"}} disabled={!contactMessage.trim()||contactSubmitting}>
+        <Icons.share s={16} c="white"/>{contactSubmitting?"Sending...":"Send message"}
+      </Btn>
+      </>
+      )}
       <div style={{marginTop:24,padding:"14px",background:"#f3f2ef",borderRadius:12,textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
         <Icons.mail s={14} c="#666"/><p style={{fontSize:"0.83rem",color:"#666"}}>Or email: <strong>support@unmaskr.com</strong></p>
       </div>
@@ -2638,6 +2720,8 @@ export default function App() {
   const [checkingSession,setCheckingSession] = useState(true);
   const [session,setSession] = useState(null);
   const [profile,setProfile] = useState(null);
+  const [suspendedNotice,setSuspendedNotice] = useState(false);
+  const [platformSettings,setPlatformSettings] = useState(null);
 
   const userCountry = profile?.country || "NG";
   const userDOB = profile?.dob || "";
@@ -2664,10 +2748,26 @@ export default function App() {
     } else {
       setProfileFetchError("");
     }
-    if (data) setProfile(data);
+    if (data) {
+      if (data.status === "suspended") {
+        // Suspended accounts are signed out immediately, not let into the app.
+        await supabase.auth.signOut();
+        setProfile(null);
+        setSuspendedNotice(true);
+        return;
+      }
+      setProfile(data);
+    }
+  };
+
+  const fetchPlatformSettings = async () => {
+    const { data } = await supabase.from("platform_settings").select("*").eq("id", 1).single();
+    if (data) setPlatformSettings(data);
   };
 
   useEffect(() => {
+    fetchPlatformSettings();
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
@@ -2709,19 +2809,48 @@ export default function App() {
     </>
   );
 
+  if (suspendedNotice) return (
+    <>
+      <GlobalStyles/>
+      <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+        <div style={{maxWidth:380}}>
+          <div style={{width:64,height:64,borderRadius:"50%",background:"#fff5f5",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}><Icons.warning s={28} c="#ef4444"/></div>
+          <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginBottom:12}}>Account suspended</h2>
+          <p style={{color:"#888",fontSize:"0.9rem",lineHeight:1.7,marginBottom:24,fontWeight:300}}>This account has been suspended. Contact <strong>support@unmaskr.com</strong> if you believe this is a mistake.</p>
+          <Btn onClick={()=>{setSuspendedNotice(false);goTo("landing");}} style={{width:"100%"}}>Back to homepage</Btn>
+        </div>
+      </div>
+    </>
+  );
+
+  // Maintenance mode blocks everyone except someone already mid-checkout on a
+  // send page (so an in-progress anonymous message isn't abruptly interrupted).
+  if (platformSettings?.maintenance_mode && screen !== "send") return (
+    <>
+      <GlobalStyles/>
+      <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+        <div style={{maxWidth:380}}>
+          <Icons.mask size={48}/>
+          <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginTop:20,marginBottom:12}}>Down for maintenance</h2>
+          <p style={{color:"#888",fontSize:"0.9rem",lineHeight:1.7,fontWeight:300}}>We're making some improvements. Please check back shortly.</p>
+        </div>
+      </div>
+    </>
+  );
+
   const screens = {
     landing:       <Landing goTo={goTo}/>,
-    signup:        <Signup goTo={goTo} onSignupComplete={onSignupComplete}/>,
+    signup:        <Signup goTo={goTo} onSignupComplete={onSignupComplete} signupsDisabled={platformSettings?.new_signups_enabled===false}/>,
     login:         <Login goTo={goTo}/>,
     forgot:        <ForgotPassword goTo={goTo}/>,
     terms:         <Terms goTo={goTo} fromSend={false}/>,
-    inbox:         <Inbox goTo={goTo} currency={currency} isMinor={isMinor} userId={session?.user?.id} username={profile?.username||"yourname"}/>,
+    inbox:         <Inbox goTo={goTo} currency={currency} isMinor={isMinor} userId={session?.user?.id} username={profile?.username||"yourname"} hintsDisabled={platformSettings?.hint_purchases_enabled===false}/>,
     send:          <SendPage goTo={goTo} params={params} customization={customization} receiverCurrency={currency}/>,
     stats:         <Stats goTo={goTo} userId={session?.user?.id}/>,
-    wallet:        <Wallet goTo={goTo} currency={currency} userId={session?.user?.id} userName={profile?.name}/>,
-    games:         <Games goTo={goTo}/>,
-    "game-lobby":  <GameLobby goTo={goTo}/>,
-    "game-stake":  <GameStake goTo={goTo} currency={currency} is18Plus={is18Plus}/>,
+    wallet:        <Wallet goTo={goTo} currency={currency} userId={session?.user?.id} userName={profile?.name} withdrawalsDisabled={platformSettings?.withdrawals_enabled===false}/>,
+    games:         <Games goTo={goTo} mysteryFrozen={platformSettings?.mystery_lobby_frozen} stakeFrozen={platformSettings?.stake_win_frozen}/>,
+    "game-lobby":  <GameLobby goTo={goTo} frozen={platformSettings?.mystery_lobby_frozen}/>,
+    "game-stake":  <GameStake goTo={goTo} currency={currency} is18Plus={is18Plus} frozen={platformSettings?.stake_win_frozen}/>,
     settings:      <Settings goTo={goTo} customization={customization} setCustomization={setCustomization} currency={currency} profile={profile} userId={session?.user?.id} onLogout={handleLogout}/>,
     customization: <Customization goTo={goTo} customization={customization} setCustomization={setCustomization}/>,
   };
