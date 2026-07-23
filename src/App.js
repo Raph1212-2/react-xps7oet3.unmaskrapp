@@ -1803,7 +1803,23 @@ const Games = ({ goTo, mysteryFrozen=false, stakeFrozen=false }) => (
 
 // ── MYSTERY LOBBY (still simulated) ────────────────────────────────────────────
 const AVATAR_COLORS = ["#0e0e0e","#ff5c3a","#6366f1","#059669","#d97706","#ec4899"];
-const GameLobby = ({ goTo, frozen=false }) => {
+
+const MYSTERY_CATEGORIES = [
+  { key:"food", label:"Favourite food?" },
+  { key:"pet", label:"Favourite pet?" },
+  { key:"car_brand", label:"Favourite car brand?" },
+  { key:"phone_brand", label:"Favourite phone brand?" },
+];
+
+const makeLobbyCode = () => "UNMSK-" + Math.floor(1000 + Math.random()*9000);
+
+const getGuestToken = () => {
+  let token = localStorage.getItem("unmaskr_guest_token");
+  if (!token) { token = "guest-" + Math.random().toString(36).slice(2) + Date.now(); localStorage.setItem("unmaskr_guest_token", token); }
+  return token;
+};
+
+const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
   if (frozen) return (
     <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
       <div style={{maxWidth:380}}>
@@ -1814,145 +1830,316 @@ const GameLobby = ({ goTo, frozen=false }) => {
       </div>
     </div>
   );
-  const [phase,setPhase] = useState("setup");
-  const [players] = useState([
-    {id:1,name:"You (Host)",prefs:["Pizza","Dogs","Netflix"],ready:true},
-    {id:2,name:"Temi",prefs:["Sushi","Cats","Spotify"],ready:true},
-    {id:3,name:"Kolade",prefs:["Burger","Dogs","Netflix"],ready:false},
-    {id:4,name:"Sade",prefs:["Pizza","Cats","YouTube"],ready:true},
-  ]);
-  const [round,setRound] = useState(0);
-  const [guess,setGuess] = useState("");
-  const [lives,setLives] = useState(3);
-  const [copied,setCopied] = useState(false);
-  const [timeLeft,setTimeLeft] = useState(30);
-  const [answered,setAnswered] = useState(false);
-  const timerRef = useRef(null);
-  const lobbyCode = "UNMSK-4829";
-  const categories = [
-    {q:"Favourite food?",opts:["Pizza","Sushi","Burger","Jollof Rice","Pasta"]},
-    {q:"Favourite pet?",opts:["Dogs","Cats","Birds","Fish","None"]},
-    {q:"Favourite streaming?",opts:["Netflix","Spotify","YouTube","Apple TV","None"]},
-  ];
 
-  useEffect(()=>{
-    if(phase!=="playing"||answered) return;
-    setTimeLeft(30);
-    timerRef.current = setInterval(()=>setTimeLeft(t=>{
-      if(t<=1){clearInterval(timerRef.current);setLives(l=>l-1);setAnswered(true);return 0;}
-      return t-1;
-    }),1000);
-    return ()=>clearInterval(timerRef.current);
-  },[phase,round,answered]);
+  const guestTokenRef = useRef(userId ? null : getGuestToken());
+  const [phase,setPhase] = useState(joinCode ? "join" : "setup");
+  const [guestName,setGuestName] = useState(userName || "");
+  const [session,setSession] = useState(null);
+  const [myPlayer,setMyPlayer] = useState(null);
+  const [players,setPlayers] = useState([]);
+  const [answers,setAnswers] = useState({});
+  const [lobbyCopied,setLobbyCopied] = useState(false);
+  const [error,setError] = useState("");
+  const [loading,setLoading] = useState(false);
+  const [myGuess,setMyGuess] = useState("");
+  const [myGuesses,setMyGuesses] = useState({}); // round -> guessed value, so I know if I've already guessed
+  const [revealInfo,setRevealInfo] = useState(null);
 
-  const nextRound = () => {
-    clearInterval(timerRef.current);
-    if(lives<=0){setPhase("result");return;}
-    setRound(r=>r+1);setGuess("");setAnswered(false);
+  const fetchPlayers = async (sessionId) => {
+    const { data } = await supabase.from("game_players").select("*").eq("session_id", sessionId).order("joined_at");
+    if (data) setPlayers(data);
   };
 
-  if(phase==="setup") return (
-    <div style={{minHeight:"100vh",background:"#fafaf8"}}>
-      <div style={{padding:"20px 28px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-        <BackBtn onClick={()=>goTo("games")}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Mystery Lobby</span>
-      </div>
-      <div style={{maxWidth:520,margin:"0 auto",padding:"40px 24px"}}>
-        <div className="fadeUp" style={{textAlign:"center",marginBottom:40}}>
-          <div style={{width:64,height:64,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><Icons.mask size={32}/></div>
-          <h2 className="syne" style={{fontSize:"1.8rem",fontWeight:800,marginBottom:8}}>Create a Lobby</h2>
-          <p style={{color:"#888",fontSize:"0.9rem",fontWeight:300}}>Share the lobby code with friends. Game starts when everyone is ready!</p>
-        </div>
-        <div style={{background:"white",borderRadius:20,padding:"28px 24px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:20}}>
-          <p style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>Lobby Code</p>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span className="syne" style={{fontSize:"1.6rem",fontWeight:800,letterSpacing:"0.1em"}}>{lobbyCode}</span>
-            <button onClick={()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{padding:"8px 14px",borderRadius:50,border:"1px solid rgba(0,0,0,0.12)",background:"transparent",cursor:"pointer",fontSize:"0.83rem",display:"flex",alignItems:"center",gap:6}}>
-              <Icons.copy s={14} c="#555"/>{copied?"Copied!":"Copy"}
-            </button>
-          </div>
-        </div>
-        <div style={{background:"white",borderRadius:20,padding:"24px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:20}}>
-          <p style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:16}}>Players ({players.length}/8)</p>
-          {players.map((p,i)=>(
-            <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
-              <Avatar size={30} bg={AVATAR_COLORS[i%AVATAR_COLORS.length]} iconSize={16}/>
-              <span style={{flex:1,fontSize:"0.92rem",fontWeight:500}}>{p.name}</span>
-              <span style={{fontSize:"0.78rem",color:p.ready?"#16a34a":"#aaa",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
-                {p.ready?<><Icons.check s={12} c="#16a34a"/>Ready</>:"Picking..."}
-              </span>
-            </div>
-          ))}
-        </div>
-        <Btn onClick={()=>setPhase("playing")} style={{width:"100%",padding:"15px"}}>
-          <Icons.games s={18} c="white"/>Start Game
-        </Btn>
+  useEffect(() => {
+    if (joinCode) loadSessionByCode(joinCode);
+  }, [joinCode]);
+
+  const loadSessionByCode = async (code) => {
+    setLoading(true);
+    const { data, error: e } = await supabase.from("game_sessions").select("*").eq("lobby_code", code).eq("game_type","mystery_lobby").single();
+    setLoading(false);
+    if (e || !data) { setError("This lobby doesn't exist or has ended."); return; }
+    setSession(data);
+    fetchPlayers(data.id);
+    if (data.status === "playing") setPhase("playing");
+    else if (data.status === "finished") setPhase("result");
+  };
+
+  // Realtime: keep players list and session state in sync across every device in the lobby
+  useEffect(() => {
+    if (!session?.id) return;
+    const channel = supabase.channel(`mystery-${session.id}`)
+      .on('postgres_changes', { event:'*', schema:'public', table:'game_players', filter:`session_id=eq.${session.id}` }, () => fetchPlayers(session.id))
+      .on('postgres_changes', { event:'UPDATE', schema:'public', table:'game_sessions', filter:`id=eq.${session.id}` }, (payload) => {
+        setSession(payload.new);
+        if (payload.new.status === "playing") { setPhase(p => p==="lobby"?"playing":p); setMyGuess(""); }
+        if (payload.new.status === "finished") setPhase("result");
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [session?.id]);
+
+  const createLobby = async () => {
+    const name = userName || guestName.trim();
+    if (!name) { setError("Enter your name"); return; }
+    setError(""); setLoading(true);
+    const code = makeLobbyCode();
+    const { data: newSession, error: sErr } = await supabase.from("game_sessions").insert({
+      lobby_code: code, game_type:"mystery_lobby", host_user_id: userId||null, host_name: name,
+      categories: MYSTERY_CATEGORIES.map(c=>c.key),
+    }).select().single();
+    if (sErr) { setError(sErr.message); setLoading(false); return; }
+    const { data: hostPlayer } = await supabase.from("game_players").insert({
+      session_id: newSession.id, user_id: userId||null, guest_token: guestTokenRef.current, display_name: name, is_host:true,
+    }).select().single();
+    setSession(newSession); setMyPlayer(hostPlayer);
+    fetchPlayers(newSession.id);
+    setLoading(false); setPhase("answering");
+  };
+
+  const joinLobby = async () => {
+    const name = userName || guestName.trim();
+    if (!name) { setError("Enter your name"); return; }
+    setError(""); setLoading(true);
+    const { data: player, error: jErr } = await supabase.from("game_players").insert({
+      session_id: session.id, user_id: userId||null, guest_token: guestTokenRef.current, display_name: name, is_host:false,
+    }).select().single();
+    setLoading(false);
+    if (jErr) { setError(jErr.message); return; }
+    setMyPlayer(player);
+    fetchPlayers(session.id);
+    setPhase("answering");
+  };
+
+  const submitAnswers = async () => {
+    if (MYSTERY_CATEGORIES.some(c => !answers[c.key]?.trim())) { setError("Please answer every question"); return; }
+    setError(""); setLoading(true);
+    await supabase.from("game_players").update({ answers, ready:true }).eq("id", myPlayer.id);
+    setLoading(false);
+    fetchPlayers(session.id);
+    setPhase("lobby");
+  };
+
+  const startGame = async () => {
+    const ready = players.filter(p=>p.ready);
+    if (ready.length < 2) { setError("Need at least 2 players ready before starting"); return; }
+    await supabase.from("game_sessions").update({
+      status:"playing", current_round:0, current_target_player_id: ready[0].id, current_category: MYSTERY_CATEGORIES[0].key, round_revealed:false,
+    }).eq("id", session.id);
+  };
+
+  const submitGuess = async () => {
+    if (!myGuess.trim()) return;
+    await supabase.from("game_guesses").insert({
+      session_id: session.id, round: session.current_round, guesser_player_id: myPlayer.id, guessed_value: myGuess.trim(),
+    });
+    setMyGuesses(g => ({ ...g, [session.current_round]: myGuess.trim() }));
+    setMyGuess("");
+  };
+
+  const revealRound = async () => {
+    const target = players.find(p=>p.id===session.current_target_player_id);
+    const correctAnswer = target?.answers?.[session.current_category] || "";
+    const { data: guesses } = await supabase.from("game_guesses").select("*").eq("session_id", session.id).eq("round", session.current_round);
+    for (const g of (guesses||[])) {
+      const correct = g.guessed_value.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+      await supabase.from("game_guesses").update({ is_correct: correct }).eq("id", g.id);
+      if (correct) {
+        const guesser = players.find(p=>p.id===g.guesser_player_id);
+        if (guesser) await supabase.from("game_players").update({ score:(guesser.score||0)+1 }).eq("id", guesser.id);
+      }
+    }
+    setRevealInfo({ target, category: session.current_category, correctAnswer, guesses: guesses||[] });
+    await supabase.from("game_sessions").update({ round_revealed:true }).eq("id", session.id);
+    fetchPlayers(session.id);
+  };
+
+  const nextRound = async () => {
+    const readyPlayers = players.filter(p=>p.ready);
+    const nextRoundNum = session.current_round + 1;
+    const totalCombos = readyPlayers.length * MYSTERY_CATEGORIES.length;
+    if (nextRoundNum >= totalCombos) {
+      await supabase.from("game_sessions").update({ status:"finished" }).eq("id", session.id);
+      return;
+    }
+    const targetIdx = nextRoundNum % readyPlayers.length;
+    const catIdx = Math.floor(nextRoundNum / readyPlayers.length) % MYSTERY_CATEGORIES.length;
+    setRevealInfo(null);
+    await supabase.from("game_sessions").update({
+      current_round: nextRoundNum, current_target_player_id: readyPlayers[targetIdx].id, current_category: MYSTERY_CATEGORIES[catIdx].key, round_revealed:false,
+    }).eq("id", session.id);
+  };
+
+  const shareLink = `${window.location.origin}/join/${session?.lobby_code}`;
+
+  // ── JOIN screen (arrived via a shared link) ──────────────────────────────
+  if (phase==="join") return (
+    <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px"}}>
+      <div className="popIn" style={{width:"100%",maxWidth:400,textAlign:"center"}}>
+        <Icons.mask size={44}/>
+        <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginTop:16,marginBottom:8}}>Join Mystery Lobby</h2>
+        {loading && <p style={{color:"#888"}}>Loading lobby...</p>}
+        {error && <p style={{color:"#ef4444",fontSize:"0.85rem",marginBottom:16}}>{error}</p>}
+        {session && !error && (
+          <>
+            <p style={{color:"#888",fontSize:"0.9rem",marginBottom:24,fontWeight:300}}>Hosted by <strong>{session.host_name}</strong> — enter your name to join.</p>
+            {!userName && <Inp placeholder="Your name" value={guestName} onChange={e=>setGuestName(e.target.value)} style={{marginBottom:12}}/>}
+            <Btn onClick={joinLobby} style={{width:"100%"}} disabled={loading}>Join lobby</Btn>
+          </>
+        )}
       </div>
     </div>
   );
 
-  if(phase==="playing") {
-    const cat = categories[round%categories.length];
-    const targetIdx = (round%(players.length-1))+1;
-    const target = players[targetIdx];
-    const targetColor = AVATAR_COLORS[targetIdx%AVATAR_COLORS.length];
-    const tc = timeLeft>15?"#22c55e":timeLeft>7?"#f59e0b":"#ef4444";
+  // ── SETUP screen (creating a new lobby) ──────────────────────────────────
+  if (phase==="setup") return (
+    <div style={{minHeight:"100vh",background:"#fafaf8"}}>
+      <div style={{padding:"20px 28px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
+        <BackBtn onClick={()=>goTo("games")}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Mystery Lobby</span>
+      </div>
+      <div style={{maxWidth:480,margin:"0 auto",padding:"40px 24px",textAlign:"center"}}>
+        <div style={{width:64,height:64,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><Icons.mask size={32}/></div>
+        <h2 className="syne" style={{fontSize:"1.8rem",fontWeight:800,marginBottom:8}}>Create a Lobby</h2>
+        <p style={{color:"#888",fontSize:"0.9rem",fontWeight:300,marginBottom:28}}>Everyone answers a few questions about themselves, then guesses what everyone else picked.</p>
+        {!userName && <Inp placeholder="Your name" value={guestName} onChange={e=>setGuestName(e.target.value)} style={{marginBottom:12}}/>}
+        {error && <p style={{color:"#ef4444",fontSize:"0.85rem",marginBottom:12}}>{error}</p>}
+        <Btn onClick={createLobby} style={{width:"100%",padding:"15px"}} disabled={loading}>{loading?"Creating...":"Create lobby"}</Btn>
+      </div>
+    </div>
+  );
+
+  // ── ANSWERING screen (submit your own answers before entering the lobby room) ──
+  if (phase==="answering") return (
+    <div style={{minHeight:"100vh",background:"#fafaf8"}}>
+      <div style={{padding:"20px 28px",borderBottom:"1px solid rgba(0,0,0,0.07)"}}><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Answer about yourself</span></div>
+      <div style={{maxWidth:480,margin:"0 auto",padding:"32px 24px"}}>
+        <p style={{color:"#888",fontSize:"0.88rem",marginBottom:24,fontWeight:300}}>Your friends will try to guess these — answer honestly!</p>
+        {MYSTERY_CATEGORIES.map(c => (
+          <div key={c.key} style={{marginBottom:16}}>
+            <label style={{fontSize:"0.85rem",fontWeight:600,marginBottom:8,display:"block"}}>{c.label}</label>
+            <Inp value={answers[c.key]||""} onChange={e=>setAnswers(a=>({...a,[c.key]:e.target.value}))}/>
+          </div>
+        ))}
+        {error && <p style={{color:"#ef4444",fontSize:"0.85rem",marginBottom:12}}>{error}</p>}
+        <Btn onClick={submitAnswers} style={{width:"100%",marginTop:8,padding:"15px"}} disabled={loading}>{loading?"Saving...":"Enter lobby"}</Btn>
+      </div>
+    </div>
+  );
+
+  // ── LOBBY room (waiting for players, real-time list) ─────────────────────
+  if (phase==="lobby") {
+    const isHost = myPlayer?.is_host;
+    const readyCount = players.filter(p=>p.ready).length;
     return (
       <div style={{minHeight:"100vh",background:"#fafaf8"}}>
-        <div style={{padding:"16px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-          <span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Round {round+1}</span>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,background:timeLeft<=7?"#fff5f5":"#f0efec",padding:"6px 12px",borderRadius:50}}>
-              <Icons.timer s={16} c={tc}/>
-              <span className="syne" style={{fontWeight:800,fontSize:"1rem",color:tc}}>{timeLeft}s</span>
-            </div>
-            <div style={{display:"flex",gap:4}}>{[...Array(3)].map((_,i)=><Icons.heart key={i} s={18} c={i<lives?"#ff5c3a":"#e5e5e5"}/>)}</div>
-          </div>
+        <div style={{padding:"20px 28px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
+          <BackBtn onClick={()=>goTo("games")}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Lobby</span>
         </div>
-        <div style={{height:4,background:"#f0efec"}}><div style={{height:"100%",width:`${(timeLeft/30)*100}%`,background:tc,transition:"width 1s linear,background 0.3s"}}/></div>
-        <div style={{maxWidth:480,margin:"0 auto",padding:"32px 24px"}}>
-          <div className="fadeUp" style={{background:"#0e0e0e",borderRadius:20,padding:"24px",marginBottom:24,textAlign:"center"}}>
-            <div style={{marginBottom:8,display:"flex",justifyContent:"center"}}><Avatar size={48} bg={targetColor} iconSize={24}/></div>
-            <p style={{color:"rgba(255,255,255,0.6)",fontSize:"0.85rem",marginBottom:4}}>Guess about</p>
-            <p style={{color:"white",fontSize:"1.1rem",fontWeight:700}}>{target.name}</p>
+        <div style={{maxWidth:480,margin:"0 auto",padding:"36px 24px"}}>
+          <div className="fadeUp" style={{background:"white",borderRadius:20,padding:"24px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:20,textAlign:"center"}}>
+            <p style={{fontSize:"0.78rem",fontWeight:600,color:"#aaa",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>Share this link</p>
+            <p className="syne" style={{fontSize:"1.1rem",fontWeight:800,marginBottom:14,wordBreak:"break-all"}}>{shareLink}</p>
+            <button onClick={()=>{navigator.clipboard?.writeText(shareLink);setLobbyCopied(true);setTimeout(()=>setLobbyCopied(false),2000);}} style={{padding:"10px 20px",borderRadius:50,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",cursor:"pointer",fontSize:"0.85rem",display:"inline-flex",alignItems:"center",gap:8}}>
+              <Icons.copy s={14} c="#555"/>{lobbyCopied?"Copied!":"Copy link"}
+            </button>
           </div>
-          <div className="fadeUp1" style={{background:"white",borderRadius:20,padding:"24px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:20}}>
-            <h3 className="syne" style={{fontSize:"1.1rem",fontWeight:800,marginBottom:18}}>{cat.q}</h3>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {cat.opts.map(opt=>(
-                <button key={opt} onClick={()=>!answered&&setGuess(opt)} style={{padding:"14px 18px",borderRadius:12,border:`1.5px solid ${guess===opt?"#0e0e0e":"rgba(0,0,0,0.1)"}`,background:answered&&target.prefs.includes(opt)?"#f0fff4":guess===opt?"#0e0e0e":"white",color:guess===opt?"white":"#0e0e0e",cursor:answered?"default":"pointer",fontSize:"0.92rem",fontWeight:500,textAlign:"left",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  {opt}{answered&&target.prefs.includes(opt)&&<Icons.check s={16} c="#16a34a"/>}
-                </button>
-              ))}
-            </div>
-          </div>
-          {!answered
-            ?<Btn onClick={()=>{clearInterval(timerRef.current);if(!target.prefs.includes(guess))setLives(l=>l-1);setAnswered(true);}} style={{width:"100%",padding:"15px"}} disabled={!guess}>Submit Guess</Btn>
-            :<div className="popIn">
-              <div style={{padding:"20px",background:target.prefs.includes(guess)?"#f0fff4":"#fff5f5",border:`1px solid ${target.prefs.includes(guess)?"#86efac":"#fca5a5"}`,borderRadius:12,marginBottom:16,textAlign:"center"}}>
-                <div style={{display:"flex",justifyContent:"center",marginBottom:8}}>
-                  {timeLeft===0?<Icons.timer s={22} c="#f59e0b"/>:target.prefs.includes(guess)?<Icons.check s={22} c="#16a34a"/>:<Icons.close s={22} c="#ef4444"/>}
-                </div>
-                <p style={{fontWeight:700,fontSize:"1rem",marginBottom:4}}>{timeLeft===0?"Time's up!":(target.prefs.includes(guess)?"Correct!":"Wrong!")}</p>
-                <p style={{fontSize:"0.85rem",color:"#555"}}>Answer: {target.prefs[0]}</p>
+          <div style={{background:"white",borderRadius:20,padding:"24px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:24}}>
+            <p style={{fontSize:"0.78rem",fontWeight:600,color:"#aaa",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:16}}>Players ({players.length}) — {readyCount} ready</p>
+            {players.map((p,i)=>(
+              <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                <Avatar size={30} bg={AVATAR_COLORS[i%AVATAR_COLORS.length]} iconSize={16}/>
+                <span style={{flex:1,fontSize:"0.92rem",fontWeight:500}}>{p.display_name}{p.is_host&&" (Host)"}</span>
+                <span style={{fontSize:"0.78rem",color:p.ready?"#16a34a":"#aaa",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>{p.ready?<><Icons.check s={12} c="#16a34a"/>Ready</>:"Answering..."}</span>
               </div>
-              <Btn onClick={nextRound} style={{width:"100%",padding:"15px"}}>{lives<=0?"See results":"Next round"}</Btn>
-            </div>
-          }
+            ))}
+          </div>
+          {error && <p style={{color:"#ef4444",fontSize:"0.85rem",marginBottom:12,textAlign:"center"}}>{error}</p>}
+          {isHost ? (
+            <Btn onClick={startGame} style={{width:"100%",padding:"15px"}}><Icons.games s={18} c="white"/>Start Game</Btn>
+          ) : (
+            <p style={{textAlign:"center",color:"#888",fontSize:"0.85rem"}}>Waiting for the host to start the game...</p>
+          )}
         </div>
       </div>
     );
   }
 
+  // ── PLAYING (real round-by-round, synced live) ────────────────────────────
+  if (phase==="playing" && session) {
+    const target = players.find(p=>p.id===session.current_target_player_id);
+    const isTarget = myPlayer?.id === session.current_target_player_id;
+    const cat = MYSTERY_CATEGORIES.find(c=>c.key===session.current_category);
+    const targetColor = AVATAR_COLORS[players.findIndex(p=>p.id===target?.id)%AVATAR_COLORS.length];
+    const hasGuessed = myGuesses[session.current_round] !== undefined;
+    const isHost = myPlayer?.is_host;
+    return (
+      <div style={{minHeight:"100vh",background:"#fafaf8"}}>
+        <div style={{padding:"16px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
+          <span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Round {session.current_round+1}</span>
+          <span style={{background:"#0e0e0e",color:"white",padding:"6px 14px",borderRadius:50,fontSize:"0.83rem",fontWeight:600}}>{myPlayer?.score||0} pts</span>
+        </div>
+        <div style={{maxWidth:480,margin:"0 auto",padding:"32px 24px"}}>
+          <div className="fadeUp" style={{background:"#0e0e0e",borderRadius:20,padding:"24px",marginBottom:24,textAlign:"center"}}>
+            <div style={{marginBottom:8,display:"flex",justifyContent:"center"}}><Avatar size={48} bg={targetColor} iconSize={24}/></div>
+            <p style={{color:"rgba(255,255,255,0.6)",fontSize:"0.85rem",marginBottom:4}}>Guess about</p>
+            <p style={{color:"white",fontSize:"1.1rem",fontWeight:700}}>{target?.display_name}</p>
+          </div>
+          <div className="fadeUp1" style={{background:"white",borderRadius:20,padding:"24px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:20}}>
+            <h3 className="syne" style={{fontSize:"1.1rem",fontWeight:800,marginBottom:18}}>{cat?.label}</h3>
+            {isTarget ? (
+              <p style={{color:"#888",fontSize:"0.9rem"}}>This round is about you — sit tight while others guess!</p>
+            ) : session.round_revealed ? null : hasGuessed ? (
+              <p style={{color:"#16a34a",fontSize:"0.9rem",display:"flex",alignItems:"center",gap:8}}><Icons.check s={16} c="#16a34a"/>Guess submitted — waiting for others...</p>
+            ) : (
+              <div style={{display:"flex",gap:8}}>
+                <Inp placeholder="Your guess..." value={myGuess} onChange={e=>setMyGuess(e.target.value)}/>
+                <button onClick={submitGuess} disabled={!myGuess.trim()} style={{padding:"14px 20px",borderRadius:14,border:"none",background:myGuess.trim()?"#0e0e0e":"#e0e0e0",color:"white",fontWeight:600,cursor:myGuess.trim()?"pointer":"not-allowed"}}>Guess</button>
+              </div>
+            )}
+          </div>
+
+          {session.round_revealed && revealInfo && (
+            <div className="popIn" style={{background:"#f0fff4",border:"1px solid #86efac",borderRadius:16,padding:"20px",marginBottom:20}}>
+              <p style={{fontWeight:700,marginBottom:10}}>{revealInfo.target?.display_name}'s answer: "{revealInfo.correctAnswer}"</p>
+              {revealInfo.guesses.map(g=>{
+                const guesser = players.find(p=>p.id===g.guesser_player_id);
+                return <p key={g.id} style={{fontSize:"0.85rem",color:g.is_correct?"#16a34a":"#991b1b",marginBottom:4}}>{guesser?.display_name}: "{g.guessed_value}" {g.is_correct?"✓ Correct! +1":"✗"}</p>;
+              })}
+            </div>
+          )}
+
+          {isHost && !isTarget && !session.round_revealed && (
+            <Btn onClick={revealRound} style={{width:"100%",padding:"15px"}}>Reveal answer</Btn>
+          )}
+          {isHost && session.round_revealed && (
+            <Btn onClick={nextRound} style={{width:"100%",padding:"15px"}}>Next round</Btn>
+          )}
+          {!isHost && (
+            <p style={{textAlign:"center",color:"#aaa",fontSize:"0.8rem",marginTop:10}}>The host controls when rounds advance.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── RESULT ─────────────────────────────────────────────────────────────
+  const sorted = [...players].sort((a,b)=>(b.score||0)-(a.score||0));
   return (
     <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
-      <div className="popIn">
-        <div style={{width:80,height:80,borderRadius:"50%",background:lives>0?"#f0fff4":"#fff5f5",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
-          {lives>0?<Icons.trophy s={36} c="#16a34a"/>:<Icons.close s={36} c="#ef4444"/>}
+      <div className="popIn" style={{maxWidth:420,width:"100%"}}>
+        <div style={{width:80,height:80,borderRadius:"50%",background:"#f0fff4",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><Icons.trophy s={36} c="#16a34a"/></div>
+        <h2 className="syne" style={{fontSize:"2rem",fontWeight:800,marginBottom:20}}>Game over!</h2>
+        <div style={{background:"white",borderRadius:20,padding:"20px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:24,textAlign:"left"}}>
+          {sorted.map((p,i)=>(
+            <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:i<sorted.length-1?"1px solid rgba(0,0,0,0.06)":"none"}}>
+              <span style={{width:20,textAlign:"center",fontSize:"0.8rem",color:"#aaa",fontWeight:700}}>{i+1}</span>
+              <Avatar size={30} bg={AVATAR_COLORS[i%AVATAR_COLORS.length]} iconSize={16}/>
+              <span style={{flex:1,fontWeight:500}}>{p.display_name}</span>
+              <span className="syne" style={{fontWeight:800}}>{p.score||0} pts</span>
+            </div>
+          ))}
         </div>
-        <h2 className="syne" style={{fontSize:"2rem",fontWeight:800,marginBottom:12}}>{lives>0?"You survived!":"Eliminated!"}</h2>
-        <p style={{color:"#888",marginBottom:32,fontWeight:300}}>{lives>0?"You made it through all the rounds!":"You ran out of guesses."}</p>
-        <Btn onClick={()=>{setPhase("setup");setLives(3);setRound(0);setGuess("");setAnswered(false);}} style={{marginBottom:12}}>Play again</Btn><br/>
-        <Btn outline onClick={()=>goTo("games")} style={{marginTop:10}}>Back to games</Btn>
+        <Btn onClick={()=>goTo("games")} style={{width:"100%"}}>Back to games</Btn>
       </div>
     </div>
   );
@@ -2701,12 +2888,16 @@ const calcAge = (dobStr) => {
 
 // Screens that are NOT usernames — anything else in the URL path is treated
 // as someone's username and routes straight to the send-message page.
-const RESERVED_PATHS = ["landing","signup","login","forgot","terms","inbox","send","stats","wallet","games","game-lobby","game-stake","settings","customization"];
+const RESERVED_PATHS = ["landing","signup","login","forgot","terms","inbox","send","stats","wallet","games","game-lobby","game-stake","settings","customization","join","join-stake"];
 
 const getInitialRouteFromURL = () => {
   const path = window.location.pathname.replace(/^\/+|\/+$/g, ""); // strip leading/trailing slashes
   if (!path) return { screen: "landing", params: {} };
-  const segment = path.split("/")[0];
+  const parts = path.split("/");
+  const segment = parts[0];
+  // Game invite links: /join/CODE (Mystery Lobby) and /join-stake/CODE (Stake & Win)
+  if (segment === "join" && parts[1]) return { screen: "game-lobby", params: { joinCode: parts[1] } };
+  if (segment === "join-stake" && parts[1]) return { screen: "game-stake", params: { joinCode: parts[1] } };
   if (RESERVED_PATHS.includes(segment)) return { screen: segment, params: {} };
   // Anything else (e.g. "/temi") is treated as a username send-link
   return { screen: "send", params: { username: segment } };
@@ -2849,8 +3040,8 @@ export default function App() {
     stats:         <Stats goTo={goTo} userId={session?.user?.id}/>,
     wallet:        <Wallet goTo={goTo} currency={currency} userId={session?.user?.id} userName={profile?.name} withdrawalsDisabled={platformSettings?.withdrawals_enabled===false}/>,
     games:         <Games goTo={goTo} mysteryFrozen={platformSettings?.mystery_lobby_frozen} stakeFrozen={platformSettings?.stake_win_frozen}/>,
-    "game-lobby":  <GameLobby goTo={goTo} frozen={platformSettings?.mystery_lobby_frozen}/>,
-    "game-stake":  <GameStake goTo={goTo} currency={currency} is18Plus={is18Plus} frozen={platformSettings?.stake_win_frozen}/>,
+    "game-lobby":  <GameLobby goTo={goTo} frozen={platformSettings?.mystery_lobby_frozen} joinCode={params?.joinCode} userId={session?.user?.id} userName={profile?.name||profile?.username}/>,
+    "game-stake":  <GameStake goTo={goTo} currency={currency} is18Plus={is18Plus} frozen={platformSettings?.stake_win_frozen} joinCode={params?.joinCode} userId={session?.user?.id} userName={profile?.name||profile?.username}/>,
     settings:      <Settings goTo={goTo} customization={customization} setCustomization={setCustomization} currency={currency} profile={profile} userId={session?.user?.id} onLogout={handleLogout}/>,
     customization: <Customization goTo={goTo} customization={customization} setCustomization={setCustomization}/>,
   };
