@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from './supabaseClient';
+import html2canvas from 'html2canvas';
 // ── LUCIDE-STYLE SVG ICONS ─────────────────────────────────────────────────────
 const Icon = ({ d, size=20, color="currentColor", strokeWidth=1.8 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -545,32 +546,67 @@ const ReceiptModal = ({ title, items, onClose }) => {
 // ── SHARE MODAL ────────────────────────────────────────────────────────────────
 const ShareModal = ({ message, ownerName, onClose }) => {
   const [copied,setCopied] = useState(false);
+  const [generating,setGenerating] = useState(false);
+  const [shareError,setShareError] = useState("");
+  const cardRef = useRef(null);
   const shareText = `"${message}"\n\nSend me an anonymous message on Unmaskr 👉 ${window.location.origin}/${ownerName||"yourname"}`;
   const toWA = () => window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`,"_blank");
   const toTW = () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`,"_blank");
   const copyTxt = () => {navigator.clipboard?.writeText(shareText);setCopied(true);setTimeout(()=>setCopied(false),2000);};
+
+  const shareAsImage = async () => {
+    if (!cardRef.current) return;
+    setGenerating(true);
+    setShareError("");
+    try {
+      const canvas = await html2canvas(cardRef.current, { backgroundColor:null, scale:3 });
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+      const file = new File([blob], "unmaskr-message.png", { type:"image/png" });
+
+      if (navigator.canShare && navigator.canShare({ files:[file] })) {
+        await navigator.share({
+          files:[file],
+          title:"Anonymous message on Unmaskr",
+          text:`Send me an anonymous message too 👉 ${window.location.origin}/${ownerName||"yourname"}`,
+        });
+      } else {
+        // Fallback for browsers without file-sharing support (mostly desktop) — download instead
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = "unmaskr-message.png";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setShareError("Image saved — attach it manually in WhatsApp, since your browser doesn't support direct sharing.");
+      }
+    } catch (err) {
+      if (err.name !== "AbortError") setShareError("Couldn't generate the image — try again.");
+    }
+    setGenerating(false);
+  };
+
   return (
     <Modal onClose={onClose}>
       <p className="syne" style={{fontWeight:700,fontSize:"1rem",marginBottom:6}}>Share this message</p>
-      <p style={{fontSize:"0.83rem",color:"#888",marginBottom:20,fontWeight:300}}>Share as a card on your socials</p>
-      <div style={{background:"#0e0e0e",borderRadius:16,padding:"28px 24px",marginBottom:20,textAlign:"center"}}>
-        <Icons.mask size={28} color="white"/>
-        <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.72rem",margin:"10px 0 6px",letterSpacing:"0.1em",textTransform:"uppercase"}}>Anonymous message</p>
-        <p style={{color:"white",fontSize:"1rem",lineHeight:1.7,fontStyle:"italic"}}>"{message}"</p>
-        <p style={{color:"rgba(255,255,255,0.3)",fontSize:"0.72rem",marginTop:16}}>{window.location.host}/{ownerName||"yourname"}</p>
+      <p style={{fontSize:"0.83rem",color:"#888",marginBottom:20,fontWeight:300}}>Share it as an image, just like NGL</p>
+      <div ref={cardRef} style={{background:"#0e0e0e",borderRadius:16,padding:"32px 26px",marginBottom:20,textAlign:"center"}}>
+        <Icons.mask size={30} color="white"/>
+        <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.72rem",margin:"12px 0 8px",letterSpacing:"0.1em",textTransform:"uppercase"}}>Anonymous message</p>
+        <p style={{color:"white",fontSize:"1.05rem",lineHeight:1.7,fontStyle:"italic"}}>"{message}"</p>
+        <p style={{color:"rgba(255,255,255,0.3)",fontSize:"0.72rem",marginTop:18}}>{window.location.host}/{ownerName||"yourname"}</p>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        <button onClick={toWA} style={{padding:"13px",borderRadius:12,border:"none",background:"#25D366",color:"white",fontWeight:600,cursor:"pointer",fontSize:"0.9rem",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          <Icons.share s={16} c="white"/> Share to WhatsApp
+        <button onClick={shareAsImage} disabled={generating} style={{padding:"14px",borderRadius:12,border:"none",background:"#ff5c3a",color:"white",fontWeight:700,cursor:generating?"default":"pointer",fontSize:"0.92rem",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:generating?0.7:1}}>
+          <Icons.photo s={16} c="white"/> {generating?"Preparing image...":"Share as image"}
         </button>
-        <button onClick={toTW} style={{padding:"13px",borderRadius:12,border:"none",background:"#1DA1F2",color:"white",fontWeight:600,cursor:"pointer",fontSize:"0.9rem",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          <Icons.share s={16} c="white"/> Share to Twitter / X
+        {shareError && <p style={{fontSize:"0.78rem",color:shareError.includes("saved")?"#16a34a":"#ef4444",textAlign:"center"}}>{shareError}</p>}
+        <button onClick={toWA} style={{padding:"13px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.1)",background:"white",color:"#0e0e0e",fontWeight:500,cursor:"pointer",fontSize:"0.87rem",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <Icons.share s={15} c="#555"/> Share as text instead
         </button>
-        <button onClick={copyTxt} style={{padding:"13px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",fontWeight:500,cursor:"pointer",fontSize:"0.9rem",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          <Icons.copy s={16} c="#555"/> {copied?"Copied!":"Copy text"}
+        <button onClick={copyTxt} style={{padding:"13px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",fontWeight:500,cursor:"pointer",fontSize:"0.87rem",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <Icons.copy s={15} c="#555"/> {copied?"Copied!":"Copy text"}
         </button>
       </div>
-      <p style={{textAlign:"center",marginTop:14,fontSize:"0.75rem",color:"#ccc"}}>Screenshot and share to Instagram Stories too!</p>
+      <p style={{textAlign:"center",marginTop:14,fontSize:"0.75rem",color:"#ccc"}}>"Share as image" opens your phone's share menu — pick WhatsApp, Instagram, or wherever you like.</p>
     </Modal>
   );
 };
@@ -1811,6 +1847,24 @@ const MYSTERY_CATEGORIES = [
   { key:"phone_brand", label:"Favourite phone brand?" },
 ];
 
+const MYSTERY_FALLBACK_OPTIONS = {
+  food: ["Pizza","Jollof Rice","Suya","Pasta","Burger","Sushi","Amala"],
+  pet: ["Dogs","Cats","Fish","Birds","None"],
+  car_brand: ["Toyota","Mercedes-Benz","Honda","Lexus","Ferrari","Innoson"],
+  phone_brand: ["iPhone","Samsung","Tecno","Infinix","Google Pixel"],
+};
+
+const shuffleArr = (arr) => [...arr].sort(()=>Math.random()-0.5);
+
+const getRoundOptions = (correctAnswer, category, allPlayers) => {
+  const realAnswers = allPlayers.map(p=>p.answers?.[category]).filter(Boolean);
+  const pool = new Set([correctAnswer, ...realAnswers]);
+  const fallback = MYSTERY_FALLBACK_OPTIONS[category] || [];
+  let i = 0;
+  while (pool.size < 4 && i < fallback.length) { pool.add(fallback[i]); i++; }
+  return shuffleArr([...pool]);
+};
+
 const makeLobbyCode = () => "UNMSK-" + Math.floor(1000 + Math.random()*9000);
 
 const getGuestToken = () => {
@@ -1928,12 +1982,12 @@ const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
     }).eq("id", session.id);
   };
 
-  const submitGuess = async () => {
-    if (!myGuess.trim()) return;
+  const submitGuess = async (value) => {
+    if (!value) return;
     await supabase.from("game_guesses").insert({
-      session_id: session.id, round: session.current_round, guesser_player_id: myPlayer.id, guessed_value: myGuess.trim(),
+      session_id: session.id, round: session.current_round, guesser_player_id: myPlayer.id, guessed_value: value,
     });
-    setMyGuesses(g => ({ ...g, [session.current_round]: myGuess.trim() }));
+    setMyGuesses(g => ({ ...g, [session.current_round]: value }));
     setMyGuess("");
   };
 
@@ -2072,6 +2126,8 @@ const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
     const targetColor = AVATAR_COLORS[players.findIndex(p=>p.id===target?.id)%AVATAR_COLORS.length];
     const hasGuessed = myGuesses[session.current_round] !== undefined;
     const isHost = myPlayer?.is_host;
+    const correctAnswer = target?.answers?.[session.current_category] || "";
+    const roundOptions = target ? getRoundOptions(correctAnswer, session.current_category, players) : [];
     return (
       <div style={{minHeight:"100vh",background:"#fafaf8"}}>
         <div style={{padding:"16px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
@@ -2091,9 +2147,12 @@ const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
             ) : session.round_revealed ? null : hasGuessed ? (
               <p style={{color:"#16a34a",fontSize:"0.9rem",display:"flex",alignItems:"center",gap:8}}><Icons.check s={16} c="#16a34a"/>Guess submitted — waiting for others...</p>
             ) : (
-              <div style={{display:"flex",gap:8}}>
-                <Inp placeholder="Your guess..." value={myGuess} onChange={e=>setMyGuess(e.target.value)}/>
-                <button onClick={submitGuess} disabled={!myGuess.trim()} style={{padding:"14px 20px",borderRadius:14,border:"none",background:myGuess.trim()?"#0e0e0e":"#e0e0e0",color:"white",fontWeight:600,cursor:myGuess.trim()?"pointer":"not-allowed"}}>Guess</button>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {roundOptions.map(opt => (
+                  <button key={opt} onClick={()=>submitGuess(opt)} style={{padding:"14px 18px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.1)",background:"white",color:"#0e0e0e",cursor:"pointer",fontSize:"0.92rem",fontWeight:500,textAlign:"left",transition:"all 0.2s"}} onMouseDown={e=>e.currentTarget.style.background="#f0efec"}>
+                    {opt}
+                  </button>
+                ))}
               </div>
             )}
           </div>
@@ -2146,10 +2205,10 @@ const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
 };
 
 // ── STAKE & WIN (still simulated) ──────────────────────────────────────────────
-const GameStake = ({ goTo, currency, is18Plus, frozen=false }) => {
+const makeStakeLobbyCode = () => "STAKE-"+Math.floor(1000+Math.random()*9000);
+
+const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, userName }) => {
   const cur = currency || CURRENCIES.NG;
-  const [selfAttested,setSelfAttested] = useState(false);
-  const ageKnownAdult = is18Plus===true || selfAttested;
 
   if (frozen) return (
     <div style={{minHeight:"100vh",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
@@ -2162,242 +2221,412 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false }) => {
     </div>
   );
 
-  const [phase,setPhase] = useState("setup");
+  const guestTokenRef = useRef(userId ? null : getGuestToken());
+  const [phase,setPhase] = useState(joinCode ? "join" : "mode"); // mode -> setup -> lobby -> playing -> result
+  const [mode,setMode] = useState(null); // 'free' | 'stake'
+  const [selfAttested,setSelfAttested] = useState(false);
+  const ageKnownAdult = is18Plus===true || selfAttested;
+
+  const [guestName,setGuestName] = useState(userName || "");
+  const [session,setSession] = useState(null);
+  const [myPlayer,setMyPlayer] = useState(null);
+  const [players,setPlayers] = useState([]);
+  const [error,setError] = useState("");
+  const [loading,setLoading] = useState(false);
+  const [lobbyCopied,setLobbyCopied] = useState(false);
+  const [walletBalance,setWalletBalance] = useState(0);
+
   const [selectedTopics,setSelectedTopics] = useState([]);
   const [difficulty,setDifficulty] = useState("medium");
   const [questionCount,setQuestionCount] = useState(10);
   const [stakeAmount,setStakeAmount] = useState("");
-  const [paymentMethod,setPaymentMethod] = useState("");
-  const [phone,setPhone] = useState("");
-  const [termsAccepted,setTermsAccepted] = useState(false);
-  const [questions,setQuestions] = useState([]);
+  const [expectedPlayers,setExpectedPlayers] = useState(3);
+
+  const [myQuestions,setMyQuestions] = useState([]);
   const [qIndex,setQIndex] = useState(0);
   const [myScore,setMyScore] = useState(0);
   const [answered,setAnswered] = useState(null);
   const [showAnswer,setShowAnswer] = useState(false);
   const [tieChoice,setTieChoice] = useState(null);
-  const [lobbyCopied,setLobbyCopied] = useState(false);
-  const [expectedPlayers,setExpectedPlayers] = useState(3);
-  const [players,setPlayers] = useState([]);
-  const [simulatedScores,setSimulatedScores] = useState([]);
-  const lobbyCode = "STAKE-"+Math.floor(1000+Math.random()*9000);
+
+  useEffect(() => {
+    if (userId) {
+      supabase.from("wallets").select("balance").eq("user_id", userId).single().then(({data})=>{ if(data) setWalletBalance(Number(data.balance)); });
+    }
+  }, [userId]);
+
+  const fetchPlayers = async (sessionId) => {
+    const { data } = await supabase.from("game_players").select("*").eq("session_id", sessionId).order("joined_at");
+    if (data) setPlayers(data);
+  };
+
+  useEffect(() => { if (joinCode) loadSessionByCode(joinCode); }, [joinCode]);
+
+  const loadSessionByCode = async (code) => {
+    setLoading(true);
+    const { data, error: e } = await supabase.from("game_sessions").select("*").eq("lobby_code", code).eq("game_type","stake_win").single();
+    setLoading(false);
+    if (e || !data) { setError("This lobby doesn't exist or has ended."); return; }
+    setSession(data);
+    setMode(data.stake_amount>0 ? "stake" : "free");
+    fetchPlayers(data.id);
+    if (data.status === "playing") setPhase("playing");
+    else if (data.status === "finished") setPhase("result");
+  };
+
+  // Realtime sync
+  useEffect(() => {
+    if (!session?.id) return;
+    const channel = supabase.channel(`stake-${session.id}`)
+      .on('postgres_changes', { event:'*', schema:'public', table:'game_players', filter:`session_id=eq.${session.id}` }, () => fetchPlayers(session.id))
+      .on('postgres_changes', { event:'UPDATE', schema:'public', table:'game_sessions', filter:`id=eq.${session.id}` }, (payload) => {
+        setSession(payload.new);
+        if (payload.new.status === "playing" && phase !== "playing") {
+          setMyQuestions(payload.new.questions || []);
+          setPhase("playing");
+        }
+        if (payload.new.status === "finished") setPhase("result");
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [session?.id]);
 
   const toggleTopic = key => setSelectedTopics(t=>t.includes(key)?t.filter(k=>k!==key):[...t,key]);
 
-  const enterLobby = () => {
-    const joined = [{id:1,name:"You (Host)"}];
-    for(let i=2;i<=expectedPlayers;i++) joined.push({id:i,name:`Player ${i}`});
-    setPlayers(joined);
+  const goToSetup = (chosenMode) => {
+    setMode(chosenMode);
+    setPhase("setup");
+  };
+
+  const createLobby = async () => {
+    const name = userName || guestName.trim();
+    if (!name) { setError("Enter your name"); return; }
+    if (mode==="stake" && !userId) { setError("You need to be logged in to stake real money."); return; }
+    if (mode==="stake" && Number(stakeAmount) > walletBalance) { setError("Your wallet balance is lower than the stake amount."); return; }
+    setError(""); setLoading(true);
+    const code = makeStakeLobbyCode();
+    const { data: newSession, error: sErr } = await supabase.from("game_sessions").insert({
+      lobby_code: code, game_type:"stake_win", host_user_id: userId||null, host_name: name, max_players: expectedPlayers,
+      stake_amount: mode==="stake" ? Number(stakeAmount) : 0, currency: cur.code,
+      topics: selectedTopics, difficulty, question_count: questionCount,
+    }).select().single();
+    if (sErr) { setError(sErr.message); setLoading(false); return; }
+
+    if (mode==="stake") {
+      // Debit the host's own stake immediately, same as any other player joining
+      await supabase.from("wallets").update({ balance: walletBalance - Number(stakeAmount), updated_at:new Date().toISOString() }).eq("user_id", userId);
+      await supabase.from("transactions").insert({ user_id:userId, type:"stake_win", amount:Number(stakeAmount), currency:cur.code, status:"completed" });
+    }
+
+    const { data: hostPlayer } = await supabase.from("game_players").insert({
+      session_id:newSession.id, user_id:userId||null, guest_token:guestTokenRef.current, display_name:name, is_host:true, stake_paid: mode==="stake",
+    }).select().single();
+
+    setSession(newSession); setMyPlayer(hostPlayer);
+    fetchPlayers(newSession.id);
+    setLoading(false); setPhase("lobby");
+  };
+
+  const joinLobby = async () => {
+    const name = userName || guestName.trim();
+    if (!name) { setError("Enter your name"); return; }
+    if (mode==="stake" && !userId) { setError("You need an Unmaskr account to join a real-money game — free games don't require one."); return; }
+    if (mode==="stake" && Number(session.stake_amount) > walletBalance) { setError(`You need at least ${cur.symbol}${session.stake_amount} in your wallet to join.`); return; }
+    setError(""); setLoading(true);
+
+    if (mode==="stake") {
+      await supabase.from("wallets").update({ balance: walletBalance - Number(session.stake_amount), updated_at:new Date().toISOString() }).eq("user_id", userId);
+      await supabase.from("transactions").insert({ user_id:userId, type:"stake_win", amount:Number(session.stake_amount), currency:session.currency, status:"completed" });
+    }
+
+    const { data: player, error: jErr } = await supabase.from("game_players").insert({
+      session_id:session.id, user_id:userId||null, guest_token:guestTokenRef.current, display_name:name, is_host:false, stake_paid: mode==="stake",
+    }).select().single();
+    setLoading(false);
+    if (jErr) { setError(jErr.message); return; }
+    setMyPlayer(player);
+    fetchPlayers(session.id);
     setPhase("lobby");
   };
 
-  const startGame = (playerPool) => {
-    const pool = playerPool || players;
-    const qs = getQuestions(selectedTopics,difficulty,questionCount);
-    setQuestions(qs);
-    setQIndex(0);
-    setMyScore(0);
-    setAnswered(null);
-    setShowAnswer(false);
-    setTieChoice(null);
-    const simulated = pool.filter(p=>p.name!=="You (Host)"&&p.name!=="You").map(p=>({
-      ...p,
-      finalScore: Math.max(0,Math.min(qs.length, Math.round(qs.length*(0.4+Math.random()*0.6))))
-    }));
-    setPlayers(pool);
-    setSimulatedScores(simulated);
+  const startGame = async () => {
+    if (players.length < 2) { setError("Need at least 2 players to start"); return; }
+    const qs = getQuestions(selectedTopics.length?selectedTopics:(session.topics||[]), difficulty||session.difficulty, questionCount||session.question_count);
+    await supabase.from("game_sessions").update({ status:"playing", questions: qs, current_question:0 }).eq("id", session.id);
+    setMyQuestions(qs);
     setPhase("playing");
   };
 
-  if(!ageKnownAdult && is18Plus===false) return (
+  const submitAnswer = async (myAnswer) => {
+    const correct = myAnswer === myQuestions[qIndex]?.a;
+    setAnswered(myAnswer);
+    setShowAnswer(true);
+    if (correct) setMyScore(s=>s+1);
+  };
+
+  const nextQuestion = async () => {
+    if (qIndex === myQuestions.length-1) {
+      // I'm done — record my final score
+      await supabase.from("game_players").update({ score: myScore + (answered===myQuestions[qIndex]?.a?0:0), ready:true }).eq("id", myPlayer.id);
+      // Check if everyone else is also done; if so, end the game
+      const { data: fresh } = await supabase.from("game_players").select("*").eq("session_id", session.id);
+      if (fresh && fresh.every(p=>p.ready)) {
+        await finishGame(fresh);
+      } else {
+        fetchPlayers(session.id);
+        setPhase("waiting-others");
+      }
+    } else {
+      setQIndex(i=>i+1); setShowAnswer(false); setAnswered(null);
+    }
+  };
+
+  const finishGame = async (finalPlayers) => {
+    const sorted = [...finalPlayers].sort((a,b)=>(b.score||0)-(a.score||0));
+    const top = sorted[0]?.score||0;
+    const tied = sorted.filter(p=>p.score===top);
+    if (session.stake_amount > 0) {
+      const pot = Number(session.stake_amount) * finalPlayers.length * 0.85;
+      const share = pot / tied.length;
+      for (const winner of tied) {
+        if (winner.user_id) {
+          const { data: w } = await supabase.from("wallets").select("balance").eq("user_id", winner.user_id).single();
+          if (w) await supabase.from("wallets").update({ balance: Number(w.balance)+share, updated_at:new Date().toISOString() }).eq("user_id", winner.user_id);
+          await supabase.from("transactions").insert({ user_id:winner.user_id, type:"stake_win_payout", amount:share, currency:session.currency, status:"completed" });
+        }
+      }
+    }
+    await supabase.from("game_sessions").update({ status:"finished" }).eq("id", session.id);
+    fetchPlayers(session.id);
+    setPhase("result");
+  };
+
+  // Poll for other players finishing while I wait
+  useEffect(() => {
+    if (phase !== "waiting-others" || !session) return;
+    const interval = setInterval(async () => {
+      const { data: fresh } = await supabase.from("game_players").select("*").eq("session_id", session.id);
+      if (fresh) {
+        setPlayers(fresh);
+        if (fresh.every(p=>p.ready)) { clearInterval(interval); await finishGame(fresh); }
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [phase, session]);
+
+  const shareLink = `${window.location.origin}/join-stake/${session?.lobby_code}`;
+
+  // ── JOIN (arrived via link) ────────────────────────────────────────────
+  if (phase==="join") return (
     <div style={{minHeight:"100vh",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px"}}>
-      <div className="popIn" style={{maxWidth:400,textAlign:"center"}}>
-        <div style={{width:64,height:64,borderRadius:"50%",background:"rgba(255,92,58,0.15)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}><Icons.lock s={28} c="#ff5c3a"/></div>
-        <h2 className="syne" style={{fontSize:"1.8rem",fontWeight:800,color:"white",marginBottom:12}}>18+ Only</h2>
-        <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",lineHeight:1.7,marginBottom:12,fontWeight:300}}>Stake & Win involves real money and is only available once you turn 18.</p>
-        <p style={{color:"rgba(255,255,255,0.35)",fontSize:"0.82rem",lineHeight:1.6,marginBottom:32,fontWeight:300}}>This is based on the date of birth on your account. It'll unlock automatically on your 18th birthday.</p>
-        <Btn onClick={()=>goTo("games")} style={{width:"100%",background:"#ff5c3a"}}>Back to games</Btn>
+      <div className="popIn" style={{width:"100%",maxWidth:400,textAlign:"center"}}>
+        <Icons.trophy s={44} c="#ffcd3c"/>
+        <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,color:"white",marginTop:16,marginBottom:8}}>Join Stake & Win</h2>
+        {loading && <p style={{color:"rgba(255,255,255,0.5)"}}>Loading...</p>}
+        {error && <p style={{color:"#ff5c3a",fontSize:"0.85rem",marginBottom:16}}>{error}</p>}
+        {session && !error && (
+          mode==="stake" && !ageKnownAdult ? (
+            is18Plus===false ? (
+              <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",lineHeight:1.7}}>This is a real-money game — you must be 18+ to join.</p>
+            ) : (
+              <>
+                <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",lineHeight:1.7,marginBottom:20}}>This game involves staking {cur.symbol}{session.stake_amount} of real money. Winner takes 85% of the pot.</p>
+                <Btn onClick={()=>setSelfAttested(true)} style={{width:"100%",background:"#ff5c3a"}}>I am 18+</Btn>
+              </>
+            )
+          ) : (
+            <>
+              <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",marginBottom:20,fontWeight:300}}>
+                Hosted by <strong style={{color:"white"}}>{session.host_name}</strong> · {mode==="stake" ? `Stake: ${cur.symbol}${session.stake_amount}` : "Free to play"}
+              </p>
+              {!userName && mode==="free" && <Inp placeholder="Your name" value={guestName} onChange={e=>setGuestName(e.target.value)} style={{marginBottom:12}}/>}
+              {mode==="stake" && !userId && <p style={{color:"#ff5c3a",fontSize:"0.82rem",marginBottom:16}}>You need an Unmaskr account to join a real-money game.</p>}
+              <Btn onClick={joinLobby} style={{width:"100%",background:"#ff5c3a"}} disabled={loading || (mode==="stake" && !userId)}>Join lobby</Btn>
+            </>
+          )
+        )}
       </div>
     </div>
   );
 
-  if(!ageKnownAdult) return (
-    <div style={{minHeight:"100vh",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px"}}>
-      <div className="popIn" style={{maxWidth:400,textAlign:"center"}}>
-        <div style={{width:64,height:64,borderRadius:"50%",background:"rgba(255,92,58,0.15)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}><Icons.lock s={28} c="#ff5c3a"/></div>
-        <h2 className="syne" style={{fontSize:"1.8rem",fontWeight:800,color:"white",marginBottom:12}}>18+ Only</h2>
-        <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",lineHeight:1.7,marginBottom:32,fontWeight:300}}>Stake & Win involves real money. Highest score wins 85% of the total pot. Max stake: {cur.symbol}{cur.stakeMax.toLocaleString()}.</p>
-        <div style={{display:"flex",gap:12}}>
-          <Btn outline onClick={()=>goTo("games")} style={{flex:1,color:"white",borderColor:"rgba(255,255,255,0.2)"}}>Go back</Btn>
-          <Btn onClick={()=>setSelfAttested(true)} style={{flex:1,background:"#ff5c3a"}}><Icons.check s={16} c="white"/>I am 18+</Btn>
-        </div>
-      </div>
-    </div>
-  );
-
-  if(phase==="setup") return (
+  // ── MODE selection (host, brand new game) ──────────────────────────────
+  if (phase==="mode") return (
     <div style={{minHeight:"100vh",background:"#fafaf8"}}>
       <div style={{padding:"20px 28px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
         <BackBtn onClick={()=>goTo("games")}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Stake & Win</span>
-        <span style={{background:"#ff5c3a",color:"white",fontSize:"0.68rem",fontWeight:700,padding:"3px 10px",borderRadius:50}}>18+</span>
       </div>
-      <div style={{maxWidth:520,margin:"0 auto",padding:"32px 24px"}}>
-        <div style={{padding:"12px 16px",background:"#fff8f0",border:"1px solid rgba(255,92,58,0.2)",borderRadius:12,marginBottom:24,display:"flex",gap:10,alignItems:"flex-start"}}>
-          <Icons.warning s={16} c="#f97316"/>
-          <p style={{fontSize:"0.83rem",color:"#666",lineHeight:1.6}}>Everyone plays on their own phone. Answer on your own — no outside help, no searching answers.</p>
+      <div style={{maxWidth:480,margin:"0 auto",padding:"48px 24px",textAlign:"center"}}>
+        <Icons.trophy s={48} c="#ffcd3c"/>
+        <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginTop:16,marginBottom:28}}>How do you want to play?</h2>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <button onClick={()=>goToSetup("free")} style={{padding:"22px",borderRadius:18,border:"1.5px solid rgba(0,0,0,0.1)",background:"white",cursor:"pointer",textAlign:"left"}}>
+            <p className="syne" style={{fontWeight:800,fontSize:"1.05rem",marginBottom:6}}>Free play</p>
+            <p style={{fontSize:"0.85rem",color:"#888",fontWeight:300}}>No money involved — just for fun and bragging rights. Anyone can join, no account needed.</p>
+          </button>
+          <button onClick={()=>goToSetup("stake")} style={{padding:"22px",borderRadius:18,border:"1.5px solid #ff5c3a",background:"#fff8f0",cursor:"pointer",textAlign:"left"}}>
+            <p className="syne" style={{fontWeight:800,fontSize:"1.05rem",marginBottom:6}}>Stake real money <span style={{background:"#ff5c3a",color:"white",fontSize:"0.65rem",fontWeight:700,padding:"3px 8px",borderRadius:50,marginLeft:6}}>18+</span></p>
+            <p style={{fontSize:"0.85rem",color:"#888",fontWeight:300}}>Everyone stakes the same amount. Winner takes 85% of the pot. Requires an account and 18+.</p>
+          </button>
         </div>
-
-        <div style={{marginBottom:24}}>
-          <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>How many players?</label>
-          <div style={{display:"flex",alignItems:"center",gap:14}}>
-            <button onClick={()=>setExpectedPlayers(n=>Math.max(2,n-1))} disabled={expectedPlayers<=2} style={{width:40,height:40,borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",cursor:expectedPlayers<=2?"not-allowed":"pointer",opacity:expectedPlayers<=2?0.4:1,display:"flex",alignItems:"center",justifyContent:"center"}}><Icons.close s={16} c="#555"/></button>
-            <span className="syne" style={{fontSize:"1.5rem",fontWeight:800,minWidth:30,textAlign:"center"}}>{expectedPlayers}</span>
-            <button onClick={()=>setExpectedPlayers(n=>Math.min(10,n+1))} disabled={expectedPlayers>=10} style={{width:40,height:40,borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",cursor:expectedPlayers>=10?"not-allowed":"pointer",opacity:expectedPlayers>=10?0.4:1,display:"flex",alignItems:"center",justifyContent:"center"}}><Icons.plus s={16} c="#555"/></button>
-            <span style={{fontSize:"0.83rem",color:"#aaa"}}>including you · min 2, max 10</span>
-          </div>
-        </div>
-
-        <div style={{marginBottom:24}}>
-          <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Select topics (pick any combination)</label>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {TRIVIA_TOPICS.map(t=>{
-              const sel = selectedTopics.includes(t.key);
-              return (
-                <button key={t.key} onClick={()=>toggleTopic(t.key)} className="topic-btn" style={{padding:"8px 14px",borderRadius:50,fontSize:"0.8rem",border:`1.5px solid ${sel?"#0e0e0e":"rgba(0,0,0,0.12)"}`,background:sel?"#0e0e0e":"white",color:sel?"white":"#555",cursor:"pointer",transition:"all 0.2s",display:"flex",alignItems:"center",gap:6}}>
-                  <t.icon/>{t.label}
-                </button>
-              );
-            })}
-          </div>
-          {selectedTopics.length===0&&<p style={{fontSize:"0.78rem",color:"#aaa",marginTop:8,display:"flex",alignItems:"center",gap:4}}><Icons.info s={12} c="#aaa"/>No topics selected = mix of all topics</p>}
-        </div>
-
-        <div style={{marginBottom:24}}>
-          <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Difficulty</label>
-          <div style={{display:"flex",gap:8}}>
-            {[{k:"easy",l:"Easy"},{k:"medium",l:"Medium"},{k:"hard",l:"Hard"},{k:"mix",l:"Mix"}].map(d=>(
-              <button key={d.k} onClick={()=>setDifficulty(d.k)} style={{flex:1,padding:"10px",borderRadius:12,border:`1.5px solid ${difficulty===d.k?"#0e0e0e":"rgba(0,0,0,0.1)"}`,background:difficulty===d.k?"#0e0e0e":"white",color:difficulty===d.k?"white":"#555",cursor:"pointer",fontSize:"0.83rem",fontWeight:600,transition:"all 0.2s"}}>{d.l}</button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{marginBottom:24}}>
-          <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Number of questions</label>
-          <div style={{display:"flex",gap:8}}>
-            {[5,10,15,20].map(n=>(
-              <button key={n} onClick={()=>setQuestionCount(n)} style={{flex:1,padding:"10px",borderRadius:12,border:`1.5px solid ${questionCount===n?"#0e0e0e":"rgba(0,0,0,0.1)"}`,background:questionCount===n?"#0e0e0e":"white",color:questionCount===n?"white":"#555",cursor:"pointer",fontSize:"0.9rem",fontWeight:700,transition:"all 0.2s"}}>{n}</button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{background:"white",borderRadius:16,padding:"20px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:16}}>
-          <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:10}}>Stake per player</label>
-          <div style={{position:"relative"}}>
-            <span style={{position:"absolute",left:18,top:"50%",transform:"translateY(-50%)",color:"#aaa",fontWeight:600}}>{cur.symbol}</span>
-            <input type="number" placeholder={`Min ${cur.stakeMin}`} value={stakeAmount} onChange={e=>setStakeAmount(Math.min(Number(e.target.value),cur.stakeMax))} style={{width:"100%",padding:"14px 18px 14px 42px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"1.1rem",fontWeight:700}}/>
-          </div>
-          <p style={{fontSize:"0.75rem",color:"#aaa",marginTop:6}}>Min: {cur.symbol}{cur.stakeMin} · Max: {cur.symbol}{cur.stakeMax.toLocaleString()} · Everyone agrees on this amount before joining</p>
-          {stakeAmount>0&&<div style={{marginTop:12,padding:"10px 14px",background:"#f0efec",borderRadius:10,fontSize:"0.83rem",color:"#555",display:"flex",alignItems:"center",gap:6}}>
-            <Icons.trophy s={14} c="#0e0e0e"/>Winner receives: <strong>{cur.symbol}{Math.round(Number(stakeAmount)*expectedPlayers*0.85).toLocaleString()}</strong>
-          </div>}
-        </div>
-
-        <div style={{background:"white",borderRadius:16,padding:"20px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:16}}>
-          <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Your payment method</label>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {[{k:"airtime",l:"Airtime",i:<Icons.phone s={16}/>},{k:"card",l:"Card",i:<Icons.card s={16}/>},{k:"transfer",l:"Bank Transfer",i:<Icons.bank s={16}/>}].map(m=>(
-              <button key={m.k} onClick={()=>setPaymentMethod(m.k)} style={{padding:"12px 16px",borderRadius:12,border:`1.5px solid ${paymentMethod===m.k?"#0e0e0e":"rgba(0,0,0,0.1)"}`,background:paymentMethod===m.k?"#0e0e0e":"white",color:paymentMethod===m.k?"white":"#0e0e0e",cursor:"pointer",textAlign:"left",transition:"all 0.2s",display:"flex",alignItems:"center",gap:10}}>
-                <span style={{opacity:paymentMethod===m.k?1:0.5}}>{m.i}</span>
-                <span style={{fontWeight:600,fontSize:"0.92rem"}}>{m.l}</span>
-              </button>
-            ))}
-          </div>
-          {paymentMethod==="airtime"&&(
-            <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:10}}>
-              <select style={{width:"100%",padding:"12px 16px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"0.92rem",cursor:"pointer"}}>
-                {COUNTRIES.map(c=><option key={c.code}>{c.flag} {c.name} ({c.phone})</option>)}
-              </select>
-              <input placeholder="Phone number" value={phone} onChange={e=>setPhone(e.target.value)} style={{width:"100%",padding:"12px 16px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"0.92rem"}}/>
-            </div>
-          )}
-          {paymentMethod==="card"&&(
-            <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:10}}>
-              <input placeholder="Card number" style={{width:"100%",padding:"12px 16px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"0.92rem"}}/>
-              <div style={{display:"flex",gap:10}}>
-                <input placeholder="MM/YY" style={{flex:1,padding:"12px 16px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"0.92rem"}}/>
-                <input placeholder="CVV" style={{flex:1,padding:"12px 16px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"0.92rem"}}/>
-              </div>
-            </div>
-          )}
-          {paymentMethod==="transfer"&&(
-            <div style={{marginTop:12,padding:"14px",background:"#f0efec",borderRadius:12}}>
-              <p style={{fontSize:"0.85rem",color:"#555",marginBottom:4}}>Bank: <strong>[Your business bank name]</strong></p>
-              <p style={{fontSize:"0.85rem",color:"#555",marginBottom:4}}>Account: <strong>[Your business account number]</strong></p>
-              <p style={{fontSize:"0.85rem",color:"#555"}}>Name: <strong>[Your business account name]</strong></p>
-            </div>
-          )}
-        </div>
-
-        <label style={{display:"flex",alignItems:"flex-start",gap:10,cursor:"pointer",padding:"14px 16px",background:"#f8f8f6",borderRadius:12,marginBottom:20}}>
-          <input type="checkbox" checked={termsAccepted} onChange={e=>setTermsAccepted(e.target.checked)} style={{marginTop:2,width:16,height:16,flexShrink:0}}/>
-          <span style={{fontSize:"0.83rem",color:"#666",lineHeight:1.6}}>I confirm all players are 18+ and accept the rules. Winner takes 85%. Max stake is {cur.symbol}{cur.stakeMax.toLocaleString()}.</span>
-        </label>
-        <Btn onClick={enterLobby} style={{width:"100%",padding:"15px"}} disabled={!stakeAmount||!paymentMethod||!termsAccepted}>
-          <Icons.share s={18} c="white"/>Create Lobby & Invite
-        </Btn>
       </div>
     </div>
   );
 
-  if(phase==="lobby") {
-    const joinedCount = players.length;
-    const allJoined = joinedCount>=expectedPlayers;
+  // ── SETUP (host configures the game) ────────────────────────────────────
+  if (phase==="setup") {
+    if (mode==="stake" && !ageKnownAdult) {
+      if (is18Plus===false) return (
+        <div style={{minHeight:"100vh",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+          <div style={{maxWidth:380}}>
+            <Icons.lock s={28} c="#ff5c3a"/>
+            <h2 className="syne" style={{fontSize:"1.8rem",fontWeight:800,color:"white",marginTop:20,marginBottom:12}}>18+ Only</h2>
+            <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",lineHeight:1.7,marginBottom:32,fontWeight:300}}>Staking real money is only available once you turn 18.</p>
+            <Btn onClick={()=>goTo("games")} style={{width:"100%",background:"#ff5c3a"}}>Back to games</Btn>
+          </div>
+        </div>
+      );
+      return (
+        <div style={{minHeight:"100vh",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px"}}>
+          <div className="popIn" style={{maxWidth:400,textAlign:"center"}}>
+            <Icons.lock s={28} c="#ff5c3a"/>
+            <h2 className="syne" style={{fontSize:"1.8rem",fontWeight:800,color:"white",marginTop:20,marginBottom:12}}>18+ Only</h2>
+            <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",lineHeight:1.7,marginBottom:32,fontWeight:300}}>Stake & Win involves real money. Highest score wins 85% of the pot.</p>
+            <div style={{display:"flex",gap:12}}>
+              <Btn outline onClick={()=>setPhase("mode")} style={{flex:1,color:"white",borderColor:"rgba(255,255,255,0.2)"}}>Go back</Btn>
+              <Btn onClick={()=>setSelfAttested(true)} style={{flex:1,background:"#ff5c3a"}}>I am 18+</Btn>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={{minHeight:"100vh",background:"#fafaf8"}}>
         <div style={{padding:"20px 28px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-          <BackBtn onClick={()=>setPhase("setup")}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Lobby</span>
+          <BackBtn onClick={()=>setPhase("mode")}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Stake & Win</span>
+          {mode==="stake" && <span style={{background:"#ff5c3a",color:"white",fontSize:"0.68rem",fontWeight:700,padding:"3px 10px",borderRadius:50}}>18+</span>}
         </div>
-        <div style={{maxWidth:480,margin:"0 auto",padding:"36px 24px"}}>
-          <div className="fadeUp" style={{textAlign:"center",marginBottom:28}}>
-            <div style={{width:56,height:56,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><Icons.trophy s={26}/></div>
-            <h2 className="syne" style={{fontSize:"1.5rem",fontWeight:800,marginBottom:6}}>Invite your friends</h2>
-            <p style={{color:"#888",fontSize:"0.88rem",fontWeight:300}}>Share this code — they'll join from their own phone and stake {cur.symbol}{stakeAmount}.</p>
-          </div>
-          <div style={{background:"white",borderRadius:20,padding:"24px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:20}}>
-            <p style={{fontSize:"0.78rem",fontWeight:600,color:"#aaa",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>Lobby Code</p>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <span className="syne" style={{fontSize:"1.6rem",fontWeight:800,letterSpacing:"0.08em"}}>{lobbyCode}</span>
-              <button onClick={()=>{navigator.clipboard?.writeText(`unmaskr.com/join/${lobbyCode}`);setLobbyCopied(true);setTimeout(()=>setLobbyCopied(false),2000);}} style={{padding:"8px 14px",borderRadius:50,border:"1px solid rgba(0,0,0,0.12)",background:"transparent",cursor:"pointer",fontSize:"0.83rem",display:"flex",alignItems:"center",gap:6}}>
-                <Icons.copy s={14} c="#555"/>{lobbyCopied?"Copied!":"Copy link"}
-              </button>
+        <div style={{maxWidth:520,margin:"0 auto",padding:"32px 24px"}}>
+          {!userName && (
+            <div style={{marginBottom:20}}>
+              <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:10}}>Your name</label>
+              <Inp value={guestName} onChange={e=>setGuestName(e.target.value)}/>
+            </div>
+          )}
+
+          <div style={{marginBottom:24}}>
+            <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Max players</label>
+            <div style={{display:"flex",alignItems:"center",gap:14}}>
+              <button onClick={()=>setExpectedPlayers(n=>Math.max(2,n-1))} style={{width:40,height:40,borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",cursor:"pointer"}}><Icons.close s={16} c="#555"/></button>
+              <span className="syne" style={{fontSize:"1.5rem",fontWeight:800,minWidth:30,textAlign:"center"}}>{expectedPlayers}</span>
+              <button onClick={()=>setExpectedPlayers(n=>Math.min(10,n+1))} style={{width:40,height:40,borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",cursor:"pointer"}}><Icons.plus s={16} c="#555"/></button>
             </div>
           </div>
-          <div style={{background:"white",borderRadius:20,padding:"24px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:24}}>
-            <p style={{fontSize:"0.78rem",fontWeight:600,color:"#aaa",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:16}}>Players ({joinedCount}/{expectedPlayers})</p>
-            {players.map((p,i)=>(
-              <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
-                <Avatar size={30} bg={AVATAR_COLORS[i%AVATAR_COLORS.length]} iconSize={16}/>
-                <span style={{flex:1,fontSize:"0.92rem",fontWeight:500}}>{p.name}</span>
-                <span style={{fontSize:"0.78rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}><Icons.check s={12} c="#16a34a"/>Staked</span>
-              </div>
-            ))}
+
+          <div style={{marginBottom:24}}>
+            <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Topics</label>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {TRIVIA_TOPICS.map(t=>{
+                const sel = selectedTopics.includes(t.key);
+                return <button key={t.key} onClick={()=>toggleTopic(t.key)} style={{padding:"8px 14px",borderRadius:50,fontSize:"0.8rem",border:`1.5px solid ${sel?"#0e0e0e":"rgba(0,0,0,0.12)"}`,background:sel?"#0e0e0e":"white",color:sel?"white":"#555",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}><t.icon/>{t.label}</button>;
+              })}
+            </div>
+            {selectedTopics.length===0&&<p style={{fontSize:"0.78rem",color:"#aaa",marginTop:8}}>No topics selected = mix of all topics</p>}
           </div>
-          <Btn onClick={()=>startGame()} style={{width:"100%",padding:"15px"}} disabled={!allJoined}>
-            <Icons.trophy s={18} c="white"/>Start Game
+
+          <div style={{marginBottom:24}}>
+            <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Difficulty</label>
+            <div style={{display:"flex",gap:8}}>
+              {[{k:"easy",l:"Easy"},{k:"medium",l:"Medium"},{k:"hard",l:"Hard"},{k:"mix",l:"Mix"}].map(d=>(
+                <button key={d.k} onClick={()=>setDifficulty(d.k)} style={{flex:1,padding:"10px",borderRadius:12,border:`1.5px solid ${difficulty===d.k?"#0e0e0e":"rgba(0,0,0,0.1)"}`,background:difficulty===d.k?"#0e0e0e":"white",color:difficulty===d.k?"white":"#555",cursor:"pointer",fontSize:"0.83rem",fontWeight:600}}>{d.l}</button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{marginBottom:24}}>
+            <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Number of questions</label>
+            <div style={{display:"flex",gap:8}}>
+              {[5,10,15,20].map(n=>(
+                <button key={n} onClick={()=>setQuestionCount(n)} style={{flex:1,padding:"10px",borderRadius:12,border:`1.5px solid ${questionCount===n?"#0e0e0e":"rgba(0,0,0,0.1)"}`,background:questionCount===n?"#0e0e0e":"white",color:questionCount===n?"white":"#555",cursor:"pointer",fontSize:"0.9rem",fontWeight:700}}>{n}</button>
+              ))}
+            </div>
+          </div>
+
+          {mode==="stake" && (
+            <div style={{background:"white",borderRadius:16,padding:"20px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:16}}>
+              <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:10}}>Stake per player</label>
+              <div style={{position:"relative"}}>
+                <span style={{position:"absolute",left:18,top:"50%",transform:"translateY(-50%)",color:"#aaa",fontWeight:600}}>{cur.symbol}</span>
+                <input type="number" placeholder={`Min ${cur.stakeMin}`} value={stakeAmount} onChange={e=>setStakeAmount(Math.min(Number(e.target.value),cur.stakeMax))} style={{width:"100%",padding:"14px 18px 14px 42px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"1.1rem",fontWeight:700}}/>
+              </div>
+              <p style={{fontSize:"0.75rem",color:"#aaa",marginTop:6}}>Your wallet: {cur.symbol}{walletBalance.toLocaleString()} · Min: {cur.symbol}{cur.stakeMin} · Max: {cur.symbol}{cur.stakeMax.toLocaleString()}</p>
+              {!userId && <p style={{fontSize:"0.78rem",color:"#ef4444",marginTop:8}}>You need to be logged in to stake real money.</p>}
+              {stakeAmount>0&&<div style={{marginTop:12,padding:"10px 14px",background:"#f0efec",borderRadius:10,fontSize:"0.83rem",color:"#555"}}>
+                <Icons.trophy s={14} c="#0e0e0e"/> Winner receives up to: <strong>{cur.symbol}{Math.round(Number(stakeAmount)*expectedPlayers*0.85).toLocaleString()}</strong>
+              </div>}
+            </div>
+          )}
+
+          {error && <p style={{color:"#ef4444",fontSize:"0.85rem",marginBottom:12}}>{error}</p>}
+          <Btn onClick={createLobby} style={{width:"100%",padding:"15px"}} disabled={loading || (mode==="stake" && (!stakeAmount||!userId))}>
+            <Icons.share s={18} c="white"/>{loading?"Creating...":"Create Lobby & Invite"}
           </Btn>
         </div>
       </div>
     );
   }
 
-  const currentQ = questions[qIndex];
-  if(phase==="playing"&&currentQ) return (
+  // ── LOBBY (real-time waiting room) ──────────────────────────────────────
+  if (phase==="lobby") {
+    const isHost = myPlayer?.is_host;
+    return (
+      <div style={{minHeight:"100vh",background:"#fafaf8"}}>
+        <div style={{padding:"20px 28px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
+          <BackBtn onClick={()=>goTo("games")}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Lobby</span>
+        </div>
+        <div style={{maxWidth:480,margin:"0 auto",padding:"36px 24px"}}>
+          <div className="fadeUp" style={{textAlign:"center",marginBottom:24}}>
+            <Icons.trophy s={40} c="#ffcd3c"/>
+            <h2 className="syne" style={{fontSize:"1.4rem",fontWeight:800,marginTop:10,marginBottom:6}}>Invite your friends</h2>
+            <p style={{color:"#888",fontSize:"0.86rem",fontWeight:300}}>{session.stake_amount>0 ? `Everyone stakes ${cur.symbol}${session.stake_amount}` : "Free to play"}</p>
+          </div>
+          <div style={{background:"white",borderRadius:20,padding:"24px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:20,textAlign:"center"}}>
+            <p style={{fontSize:"0.78rem",fontWeight:600,color:"#aaa",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>Share this link</p>
+            <p className="syne" style={{fontSize:"1rem",fontWeight:800,marginBottom:14,wordBreak:"break-all"}}>{shareLink}</p>
+            <button onClick={()=>{navigator.clipboard?.writeText(shareLink);setLobbyCopied(true);setTimeout(()=>setLobbyCopied(false),2000);}} style={{padding:"10px 20px",borderRadius:50,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",cursor:"pointer",fontSize:"0.85rem",display:"inline-flex",alignItems:"center",gap:8}}>
+              <Icons.copy s={14} c="#555"/>{lobbyCopied?"Copied!":"Copy link"}
+            </button>
+          </div>
+          <div style={{background:"white",borderRadius:20,padding:"24px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:24}}>
+            <p style={{fontSize:"0.78rem",fontWeight:600,color:"#aaa",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:16}}>Players ({players.length}/{session.max_players})</p>
+            {players.map((p,i)=>(
+              <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                <Avatar size={30} bg={AVATAR_COLORS[i%AVATAR_COLORS.length]} iconSize={16}/>
+                <span style={{flex:1,fontSize:"0.92rem",fontWeight:500}}>{p.display_name}{p.is_host&&" (Host)"}</span>
+                <span style={{fontSize:"0.78rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}><Icons.check s={12} c="#16a34a"/>{session.stake_amount>0?"Staked":"In"}</span>
+              </div>
+            ))}
+          </div>
+          {error && <p style={{color:"#ef4444",fontSize:"0.85rem",marginBottom:12,textAlign:"center"}}>{error}</p>}
+          {isHost ? (
+            <Btn onClick={startGame} style={{width:"100%",padding:"15px"}}><Icons.trophy s={18} c="white"/>Start Game</Btn>
+          ) : (
+            <p style={{textAlign:"center",color:"#888",fontSize:"0.85rem"}}>Waiting for the host to start the game...</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── PLAYING (self-paced, real question bank) ─────────────────────────────
+  const currentQ = myQuestions[qIndex];
+  if (phase==="playing" && currentQ) return (
     <div style={{minHeight:"100vh",background:"#fafaf8"}}>
       <div style={{padding:"16px 24px",borderBottom:"1px solid rgba(0,0,0,0.07)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <span className="syne" style={{fontWeight:800,fontSize:"1.05rem"}}>Question {qIndex+1}/{questions.length}</span>
-        <span style={{background:"#0e0e0e",color:"white",padding:"6px 14px",borderRadius:50,fontSize:"0.83rem",fontWeight:600,display:"flex",alignItems:"center",gap:6}}><Icons.star s={14} c="white"/>Score: {myScore}</span>
+        <span className="syne" style={{fontWeight:800,fontSize:"1.05rem"}}>Question {qIndex+1}/{myQuestions.length}</span>
+        <span style={{background:"#0e0e0e",color:"white",padding:"6px 14px",borderRadius:50,fontSize:"0.83rem",fontWeight:600}}>Score: {myScore}</span>
       </div>
-      <div style={{height:4,background:"#f0efec"}}><div style={{height:"100%",width:`${(qIndex/questions.length)*100}%`,background:"#ff5c3a",transition:"width 0.3s"}}/></div>
+      <div style={{height:4,background:"#f0efec"}}><div style={{height:"100%",width:`${(qIndex/myQuestions.length)*100}%`,background:"#ff5c3a",transition:"width 0.3s"}}/></div>
       <div style={{maxWidth:480,margin:"0 auto",padding:"32px 24px"}}>
         <div className="fadeUp" style={{background:"#0e0e0e",borderRadius:20,padding:"28px",marginBottom:24,textAlign:"center"}}>
           <p style={{color:"rgba(255,255,255,0.45)",fontSize:"0.78rem",marginBottom:12,textTransform:"uppercase",letterSpacing:"0.08em"}}>True or False?</p>
@@ -2405,33 +2634,39 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false }) => {
         </div>
         {!showAnswer?(
           <div style={{display:"flex",gap:12}}>
-            <button onClick={()=>{setAnswered(true);setShowAnswer(true);if(currentQ.a===true)setMyScore(s=>s+1);}} style={{flex:1,padding:"20px",borderRadius:16,border:"none",background:"#22c55e",color:"white",fontSize:"1rem",fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><Icons.check s={18} c="white"/>TRUE</button>
-            <button onClick={()=>{setAnswered(false);setShowAnswer(true);if(currentQ.a===false)setMyScore(s=>s+1);}} style={{flex:1,padding:"20px",borderRadius:16,border:"none",background:"#ef4444",color:"white",fontSize:"1rem",fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><Icons.close s={18} c="white"/>FALSE</button>
+            <button onClick={()=>submitAnswer(true)} style={{flex:1,padding:"20px",borderRadius:16,border:"none",background:"#22c55e",color:"white",fontSize:"1rem",fontWeight:700,cursor:"pointer"}}>TRUE</button>
+            <button onClick={()=>submitAnswer(false)} style={{flex:1,padding:"20px",borderRadius:16,border:"none",background:"#ef4444",color:"white",fontSize:"1rem",fontWeight:700,cursor:"pointer"}}>FALSE</button>
           </div>
         ):(
           <div className="popIn">
             <div style={{padding:"20px",background:answered===currentQ.a?"#f0fff4":"#fff5f5",border:`1px solid ${answered===currentQ.a?"#86efac":"#fca5a5"}`,borderRadius:16,marginBottom:20,textAlign:"center"}}>
-              <div style={{display:"flex",justifyContent:"center",marginBottom:8}}>{answered===currentQ.a?<Icons.check s={26} c="#16a34a"/>:<Icons.close s={26} c="#ef4444"/>}</div>
               <p style={{fontWeight:700,marginBottom:6}}>{answered===currentQ.a?"Correct! +1 point":"Wrong!"}</p>
               <p style={{fontSize:"0.83rem",color:"#555",lineHeight:1.6}}>{currentQ.f}</p>
             </div>
-            <Btn onClick={()=>{if(qIndex===questions.length-1)setPhase("result");else{setQIndex(i=>i+1);setShowAnswer(false);setAnswered(null);}}} style={{width:"100%",padding:"15px"}}>
-              {qIndex===questions.length-1?"See results":"Next question"}
-            </Btn>
+            <Btn onClick={nextQuestion} style={{width:"100%",padding:"15px"}}>{qIndex===myQuestions.length-1?"Finish":"Next question"}</Btn>
           </div>
         )}
       </div>
     </div>
   );
 
-  if(phase==="result") {
-    const allScores = [{id:1,name:players.find(p=>p.name.startsWith("You"))?.name||"You",score:myScore}, ...simulatedScores.map(p=>({id:p.id,name:p.name,score:p.finalScore}))];
-    const sorted = [...allScores].sort((a,b)=>b.score-a.score);
+  // ── WAITING for other players to finish ──────────────────────────────────
+  if (phase==="waiting-others") return (
+    <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+      <div style={{maxWidth:380}}>
+        <Icons.timer s={40} c="#0e0e0e"/>
+        <h2 className="syne" style={{fontSize:"1.4rem",fontWeight:800,marginTop:16,marginBottom:8}}>You're done! Score: {myScore}</h2>
+        <p style={{color:"#888",fontSize:"0.9rem",fontWeight:300}}>Waiting for the other players to finish...</p>
+      </div>
+    </div>
+  );
+
+  // ── RESULT ────────────────────────────────────────────────────────────
+  if (phase==="result") {
+    const sorted = [...players].sort((a,b)=>(b.score||0)-(a.score||0));
     const top = sorted[0]?.score||0;
     const tied = sorted.filter(p=>p.score===top);
     const isTie = tied.length>1;
-    const winner = !isTie ? sorted[0] : null;
-    const prize = Math.round(Number(stakeAmount)*players.length*0.85);
     const rankColors = ["#d4af37","#a8a8a8","#b08d57"];
     return (
       <div style={{minHeight:"100vh",background:"#fafaf8"}}>
@@ -2444,54 +2679,24 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false }) => {
               {isTie?<Icons.info s={32} c="#6366f1"/>:<Icons.trophy s={32} c="#16a34a"/>}
             </div>
             <h2 className="syne" style={{fontSize:"1.8rem",fontWeight:800,marginBottom:8}}>{isTie?"It's a tie!":"We have a winner!"}</h2>
-            {winner&&(
-              <div style={{marginTop:8}}>
-                <p style={{color:"#0e0e0e",fontWeight:700,fontSize:"1.05rem",marginBottom:4}}>
-                  {winner.name.startsWith("You")?"🎉 Congratulations, you've won this round!":`🎉 Congratulations, ${winner.name}!`}
-                </p>
-                <p style={{color:"#888",fontWeight:300,fontSize:"0.9rem"}}>
-                  {winner.name.startsWith("You")
-                    ?<>You've received <strong style={{color:"#16a34a"}}>{cur.symbol}{prize.toLocaleString()}</strong> in your wallet.</>
-                    :<>{winner.name} has received <strong style={{color:"#16a34a"}}>{cur.symbol}{prize.toLocaleString()}</strong> in their wallet.</>}
-                </p>
-              </div>
+            {!isTie && session.stake_amount>0 && (
+              <p style={{color:"#888",fontWeight:300,fontSize:"0.9rem"}}>{sorted[0].display_name} received <strong style={{color:"#16a34a"}}>{cur.symbol}{Math.round(session.stake_amount*players.length*0.85).toLocaleString()}</strong> in their wallet.</p>
+            )}
+            {isTie && session.stake_amount>0 && (
+              <p style={{color:"#888",fontWeight:300,fontSize:"0.9rem"}}>Pot split equally between {tied.map(p=>p.display_name).join(", ")}.</p>
             )}
           </div>
-          <div style={{background:"white",borderRadius:20,padding:"20px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:20}}>
+          <div style={{background:"white",borderRadius:20,padding:"20px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:24}}>
             {sorted.map((p,i)=>(
               <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:i<sorted.length-1?"1px solid rgba(0,0,0,0.06)":"none"}}>
                 {i<3?<Icons.medal s={20} c={rankColors[i]}/>:<span style={{width:20,textAlign:"center",fontSize:"0.8rem",color:"#aaa",fontWeight:700}}>{i+1}</span>}
                 <Avatar size={30} bg={AVATAR_COLORS[i%AVATAR_COLORS.length]} iconSize={16}/>
-                <span style={{flex:1,fontWeight:500}}>{p.name}</span>
-                <span className="syne" style={{fontWeight:800}}>{p.score}/{questions.length}</span>
+                <span style={{flex:1,fontWeight:500}}>{p.display_name}</span>
+                <span className="syne" style={{fontWeight:800}}>{p.score||0}/{session.question_count}</span>
               </div>
             ))}
           </div>
-          {isTie&&!tieChoice&&(
-            <div style={{background:"#f0f4ff",border:"1px solid rgba(99,102,241,0.2)",borderRadius:16,padding:"20px",marginBottom:20}}>
-              <p style={{fontWeight:700,marginBottom:4,fontSize:"0.95rem"}}>Tied at {top}/{questions.length}!</p>
-              <p style={{fontSize:"0.85rem",color:"#888",marginBottom:12,fontWeight:300,lineHeight:1.6}}>
-                Tied: {tied.map(p=>p.name).join(", ")}. Agree on a decision, then select below.
-              </p>
-              <div style={{padding:"12px 14px",background:"rgba(99,102,241,0.08)",borderRadius:10,marginBottom:16,fontSize:"0.8rem",color:"#6366f1",lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}}>
-                <Icons.info s={14} c="#6366f1"/>A notification will be sent to tied players: "Player wants to end the game and split the pot — do you agree?"
-              </div>
-              <div style={{display:"flex",gap:10}}>
-                <Btn outline onClick={()=>setTieChoice("split")} style={{flex:1,fontSize:"0.85rem"}}>Split pot equally</Btn>
-                <Btn onClick={()=>{const tiedPool=tied.map(({id,name})=>({id,name}));setTieChoice("replay");startGame(tiedPool);}} style={{flex:1,fontSize:"0.85rem"}}>Replay — tied only</Btn>
-              </div>
-            </div>
-          )}
-          {tieChoice==="split"&&(
-            <div style={{padding:"16px",background:"#f0fff4",border:"1px solid #86efac",borderRadius:12,marginBottom:16,textAlign:"center"}}>
-              <Icons.check s={20} c="#16a34a"/>
-              <p style={{fontWeight:600,marginTop:8}}>Each tied player receives {cur.symbol}{Math.round(prize/tied.length).toLocaleString()} — split has been credited to each wallet.</p>
-            </div>
-          )}
-          <div style={{display:"flex",gap:12}}>
-            <Btn outline onClick={()=>{setPhase("setup");setTieChoice(null);}} style={{flex:1}}>New game</Btn>
-            <Btn onClick={()=>goTo("games")} style={{flex:1}}>Exit</Btn>
-          </div>
+          <Btn onClick={()=>goTo("games")} style={{width:"100%"}}>Back to games</Btn>
         </div>
       </div>
     );
