@@ -1,6 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from './supabaseClient';
 import html2canvas from 'html2canvas';
+import logoMaskBlack from './assets/logo-mask-black.png';
+import logoMaskWhite from './assets/logo-mask-white.png';
+import logoFullBlack from './assets/logo-full-black.png';
+import logoFullWhite from './assets/logo-full-white.png';
+import { ALL_QUESTIONS } from './triviaQuestions';
+// ── REAL LOGO (from brand asset) ────────────────────────────────────────────────
+// LogoMask = just the mask icon. LogoFull = mask + "unmaskr" wordmark lockup.
+// Use variant="white" on dark backgrounds, default (black) on light backgrounds.
+const LogoMask = ({ size=24, variant="black", style={} }) => (
+  <img src={variant==="white"?logoMaskWhite:logoMaskBlack} alt="Unmaskr" style={{ height:size, width:"auto", display:"block", ...style }}/>
+);
+const LogoFull = ({ height=24, variant="black", style={} }) => (
+  <img src={variant==="white"?logoFullWhite:logoFullBlack} alt="Unmaskr" style={{ height, width:"auto", display:"block", ...style }}/>
+);
 // ── LUCIDE-STYLE SVG ICONS ─────────────────────────────────────────────────────
 const Icon = ({ d, size=20, color="currentColor", strokeWidth=1.8 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -142,7 +156,7 @@ const Avatar = ({ size=36, bg="#0e0e0e", iconColor="white", iconSize }) => (
 const AppNav = ({ goTo, active }) => (
   <nav style={{position:"sticky",top:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 24px",background:"rgba(250,250,248,0.94)",backdropFilter:"blur(14px)",borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
     <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>goTo("inbox")}>
-      <Icons.mask size={24}/><span className="syne" style={{fontWeight:800,fontSize:"1.05rem"}}>unmaskr</span>
+      <LogoFull height={26}/>
     </div>
     <div style={{display:"flex",gap:4}}>
       {[
@@ -235,263 +249,8 @@ const TRIVIA_TOPICS = [
   {key:"relationships",label:"Relationships",icon:()=><Icons.react s={16} c="#ec4899"/>},
 ];
 
-const ALL_QUESTIONS = {
-  tech:{
-    easy:[
-      {q:"The internet was invented in the 1990s",a:false,f:"The internet's foundations were laid in the 1960s with ARPANET."},
-      {q:"A byte consists of 8 bits",a:true,f:"Yes — 8 bits make one byte."},
-      {q:"HTML is a programming language",a:false,f:"HTML is a markup language, not a programming language."},
-    ],
-    medium:[
-      {q:"The first iPhone was released in 2007",a:true,f:"Apple launched the original iPhone on June 29, 2007."},
-      {q:"Python is primarily a compiled language",a:false,f:"Python is an interpreted language."},
-      {q:"WiFi stands for Wireless Fidelity",a:false,f:"WiFi is a brand name — it doesn't actually stand for anything officially."},
-    ],
-    hard:[
-      {q:"Quantum computers use qubits instead of classical bits",a:true,f:"Qubits can exist in superposition, unlike classical 0/1 bits."},
-      {q:"The first computer virus was created in 1986",a:true,f:"The Brain virus was created in 1986 by two Pakistani brothers."},
-      {q:"5G operates exclusively on millimeter wave frequencies",a:false,f:"5G uses a range of frequencies including sub-6GHz bands."},
-    ],
-  },
-  med:{
-    easy:[
-      {q:"The heart is on the left side of the body",a:false,f:"The heart is roughly in the center, slightly left of the sternum."},
-      {q:"Adults have 206 bones",a:true,f:"The adult human body has 206 bones."},
-      {q:"Antibiotics work against viruses",a:false,f:"Antibiotics only work against bacteria, not viruses."},
-    ],
-    medium:[
-      {q:"Blood type O- is the universal donor",a:true,f:"O negative can be given to patients of any blood type in emergencies."},
-      {q:"The liver is the largest internal organ",a:true,f:"The liver is the largest internal organ, weighing about 1.5kg."},
-      {q:"Humans have 5 senses",a:false,f:"Humans have more than 5 — including balance, proprioception, and others."},
-    ],
-    hard:[
-      {q:"DNA stands for Deoxyribonucleic Acid",a:true,f:"DNA is the molecule carrying genetic instructions in living organisms."},
-      {q:"The appendix has no known function",a:false,f:"Research suggests the appendix may play a role in gut immunity."},
-      {q:"Mitochondria is the powerhouse of the cell",a:true,f:"Mitochondria produce ATP, the cell's primary energy source."},
-    ],
-  },
-  politics:{
-    easy:[
-      {q:"The United Nations was founded in 1945",a:true,f:"The UN was founded on October 24, 1945 after World War II."},
-      {q:"Nigeria is a monarchy",a:false,f:"Nigeria is a federal republic."},
-      {q:"The US president serves a 4-year term",a:true,f:"US presidents serve 4-year terms and can serve a maximum of two terms."},
-    ],
-    medium:[
-      {q:"The Cold War was a direct military conflict between the US and USSR",a:false,f:"The Cold War was a geopolitical rivalry without direct large-scale combat."},
-      {q:"South Africa had its first democratic election in 1994",a:true,f:"Nelson Mandela won the first post-apartheid election in 1994."},
-      {q:"The European Union has 27 member states as of 2024",a:true,f:"After Brexit in 2020, the EU has 27 member states."},
-    ],
-    hard:[
-      {q:"The Rwandan genocide occurred in 1994",a:true,f:"An estimated 500,000–800,000 Tutsis were killed in just 100 days."},
-      {q:"The G7 includes China",a:false,f:"The G7 is Canada, France, Germany, Italy, Japan, the UK, and the US."},
-      {q:"The ICC is part of the United Nations system",a:false,f:"The ICC is independent of the UN, though they cooperate."},
-    ],
-  },
-  economics:{
-    easy:[
-      {q:"Inflation means prices are rising",a:true,f:"Inflation is the rate at which the general price level rises over time."},
-      {q:"GDP stands for Gross Domestic Product",a:true,f:"GDP measures the total value of goods and services produced in a country."},
-      {q:"A recession means the economy is growing",a:false,f:"A recession is defined as two consecutive quarters of negative GDP growth."},
-    ],
-    medium:[
-      {q:"The stock market always goes up in the long run",a:true,f:"Historically, major indices have trended upward over long periods."},
-      {q:"Deflation is always good for an economy",a:false,f:"Deflation can cause consumers to delay spending, harming economic growth."},
-      {q:"The World Bank and IMF are the same organization",a:false,f:"Both were founded in 1944 but have different mandates."},
-    ],
-    hard:[
-      {q:"Nigeria's economy is the largest in Africa by GDP",a:true,f:"Nigeria has the largest GDP in Africa, though South Africa leads in per capita income."},
-      {q:"Quantitative easing reduces money supply",a:false,f:"Quantitative easing increases money supply by buying assets."},
-      {q:"The Bretton Woods system ended in 1971",a:true,f:"Nixon ended dollar-gold convertibility in 1971, effectively ending Bretton Woods."},
-    ],
-  },
-  social:{
-    easy:[
-      {q:"Social media can affect mental health",a:true,f:"Studies consistently link heavy social media use to anxiety and depression."},
-      {q:"Humans are naturally social creatures",a:true,f:"Humans evolved in social groups and depend on community for survival."},
-      {q:"Peer pressure only affects teenagers",a:false,f:"Peer pressure affects people of all ages."},
-    ],
-    medium:[
-      {q:"Introversion means you dislike people",a:false,f:"Introversion means you recharge through solitude, not that you dislike others."},
-      {q:"Body language accounts for most of human communication",a:true,f:"Non-verbal cues account for a significant portion of how we communicate."},
-      {q:"Ghosting is a modern term with no psychological impact",a:false,f:"Ghosting can cause real psychological harm to those on the receiving end."},
-    ],
-    hard:[
-      {q:"The Dunbar number suggests humans can maintain ~150 stable relationships",a:true,f:"Robin Dunbar proposed that 150 is the cognitive limit for stable social relationships."},
-      {q:"Social isolation has no physical health effects",a:false,f:"Chronic loneliness is linked to higher risks of heart disease and early death."},
-      {q:"Cultural norms are universal across all societies",a:false,f:"Cultural norms vary widely — what is acceptable in one culture may be taboo in another."},
-    ],
-  },
-  education:{
-    easy:[
-      {q:"Primary school is typically the first stage of formal education",a:true,f:"Primary (elementary) school usually follows early childhood education and precedes secondary school."},
-      {q:"A university degree is required to be considered educated",a:false,f:"Education includes formal, informal, and vocational learning — a degree is one path among many."},
-      {q:"Literacy means being able to read and write",a:true,f:"Literacy is the ability to read and write with understanding."},
-    ],
-    medium:[
-      {q:"Finland is often cited for having one of the world's strongest education systems",a:true,f:"Finland is frequently ranked highly for its equitable, teacher-focused education model."},
-      {q:"Homeschooling is illegal in most countries",a:false,f:"Homeschooling is legal, with varying levels of regulation, in most countries."},
-      {q:"UNESCO promotes education access worldwide",a:true,f:"UNESCO's mandate includes promoting universal access to quality education."},
-    ],
-    hard:[
-      {q:"The world's literacy rate is above 85%",a:true,f:"Global adult literacy is estimated at over 86%, though it varies widely by region."},
-      {q:"Malala Yousafzai won the Nobel Peace Prize for her advocacy of girls' education",a:true,f:"Malala Yousafzai became the youngest Nobel laureate in 2014 for her education advocacy."},
-      {q:"Standardized testing was first introduced in the 20th century",a:false,f:"Formal standardized testing dates back to imperial China's civil service exams over a thousand years ago."},
-    ],
-  },
-  entertainment:{
-    easy:[
-      {q:"Netflix started as a DVD rental service",a:true,f:"Netflix began in 1997 as a DVD-by-mail service before streaming."},
-      {q:"Marvel is owned by Disney",a:true,f:"Disney acquired Marvel Entertainment in 2009 for $4 billion."},
-      {q:"The Oscars are awarded by the Grammy Academy",a:false,f:"The Oscars are awarded by the Academy of Motion Picture Arts and Sciences."},
-    ],
-    medium:[
-      {q:"Squid Game is a Korean production",a:true,f:"Squid Game was produced by Netflix Korea and directed by Hwang Dong-hyuk."},
-      {q:"The Beatles were from London",a:false,f:"The Beatles were from Liverpool, England."},
-      {q:"Fortnite was released in 2017",a:true,f:"Fortnite Battle Royale launched in September 2017."},
-    ],
-    hard:[
-      {q:"The highest-grossing film of all time is Avengers Endgame",a:false,f:"Avatar (2009) reclaimed the top spot after its 2022 re-release."},
-      {q:"Rihanna is from Barbados",a:true,f:"Robyn Rihanna Fenty was born in Saint Michael, Barbados."},
-      {q:"The first video game ever made was Pong",a:false,f:"Tennis for Two (1958) predates Pong by over a decade."},
-    ],
-  },
-  history:{
-    easy:[
-      {q:"World War II ended in 1945",a:true,f:"WWII ended in Europe on May 8 and in the Pacific on September 2, 1945."},
-      {q:"Christopher Columbus discovered America in 1492",a:true,f:"Columbus reached the Americas on October 12, 1492."},
-      {q:"The Great Wall of China was built in one dynasty",a:false,f:"The Great Wall was built over many centuries by multiple dynasties."},
-    ],
-    medium:[
-      {q:"Cleopatra was Egyptian by ethnicity",a:false,f:"Cleopatra was of Macedonian Greek descent from the Ptolemaic dynasty."},
-      {q:"The Berlin Wall fell in 1989",a:true,f:"The Berlin Wall fell on November 9, 1989."},
-      {q:"Nikola Tesla and Thomas Edison were close friends",a:false,f:"Tesla and Edison were famous rivals, not friends."},
-    ],
-    hard:[
-      {q:"The Roman Empire fell in 476 AD",a:true,f:"The Western Roman Empire fell in 476 AD when Romulus Augustulus was deposed."},
-      {q:"The Magna Carta was signed in 1215",a:true,f:"King John signed the Magna Carta at Runnymede on June 15, 1215."},
-      {q:"The first atomic bomb was dropped on Hiroshima",a:true,f:"Little Boy was dropped on Hiroshima on August 6, 1945."},
-    ],
-  },
-  sports:{
-    easy:[
-      {q:"A football match lasts 90 minutes",a:true,f:"Standard football/soccer matches are 90 minutes plus injury time."},
-      {q:"The Olympics are held every 4 years",a:true,f:"The Summer and Winter Olympics each occur every 4 years."},
-      {q:"Basketball was invented in the USA",a:true,f:"Dr. James Naismith invented basketball in Springfield, Massachusetts in 1891."},
-    ],
-    medium:[
-      {q:"Usain Bolt is from Jamaica",a:true,f:"Usain Bolt was born in Sherwood Content, Trelawny, Jamaica."},
-      {q:"The FIFA World Cup is held every 2 years",a:false,f:"The FIFA World Cup is held every 4 years."},
-      {q:"LeBron James has won 4 NBA championships",a:true,f:"LeBron has won titles with Miami (2012,2013), Cleveland (2016), and LA Lakers (2020)."},
-    ],
-    hard:[
-      {q:"The first modern Olympics was held in Athens in 1896",a:true,f:"The first modern Olympic Games took place in Athens, Greece in 1896."},
-      {q:"Roger Federer has won more Grand Slams than Novak Djokovic",a:false,f:"Djokovic leads with 24 Grand Slam titles as of 2024."},
-      {q:"Nigeria has won an Olympic gold medal in football",a:true,f:"Nigeria won gold at the 1996 Atlanta Olympics, defeating Argentina 3-2 in the final."},
-    ],
-  },
-  music:{
-    easy:[
-      {q:"Michael Jackson is called the King of Pop",a:true,f:"Michael Jackson earned the title 'King of Pop' for his global influence."},
-      {q:"A DJ mixes and plays recorded music",a:true,f:"DJs select and mix recorded music for audiences."},
-      {q:"Beethoven was born in Italy",a:false,f:"Ludwig van Beethoven was born in Bonn, Germany."},
-    ],
-    medium:[
-      {q:"Afrobeats originated in Nigeria",a:true,f:"Afrobeats/Afropop emerged from Nigeria and has spread globally."},
-      {q:"Grammy Awards are given for achievement in the music industry",a:true,f:"The Recording Academy's Grammy Awards honor excellence in the music industry."},
-      {q:"Taylor Swift started her career as a country artist",a:true,f:"Swift debuted with country music before transitioning to pop."},
-    ],
-    hard:[
-      {q:"Fela Kuti created Afrobeat",a:true,f:"Nigerian musician Fela Kuti created Afrobeat, blending jazz, funk, and traditional music."},
-      {q:"Beyoncé has won more Grammys than any other artist",a:true,f:"As of 2024, Beyoncé holds the record with 32 Grammy wins."},
-      {q:"The violin has 6 strings",a:false,f:"A standard violin has 4 strings."},
-    ],
-  },
-  food:{
-    easy:[
-      {q:"Jollof rice is a popular West African dish",a:true,f:"Jollof rice is beloved across West Africa, with Nigeria and Ghana famously competing for the best version."},
-      {q:"Sushi originated in China",a:false,f:"Sushi originated in Japan."},
-      {q:"Vegans do not eat meat or dairy",a:true,f:"Vegans avoid all animal products including meat, dairy, and eggs."},
-    ],
-    medium:[
-      {q:"Chocolate comes from cocoa beans",a:true,f:"Chocolate is made from cacao beans from the Theobroma cacao tree."},
-      {q:"The hottest chili pepper in the world is the jalapeño",a:false,f:"The Carolina Reaper and Pepper X are among the hottest, far beyond the jalapeño."},
-      {q:"Tomatoes are technically a fruit",a:true,f:"Botanically, tomatoes are fruits since they develop from flowers and contain seeds."},
-    ],
-    hard:[
-      {q:"France has the most Michelin-starred restaurants in the world",a:false,f:"Japan actually has the most Michelin-starred restaurants globally."},
-      {q:"The word 'salary' comes from the Latin word for salt",a:true,f:"Roman soldiers were sometimes paid in salt — 'salarium' — giving us the word salary."},
-      {q:"Suya is a dish from Northern Nigeria",a:true,f:"Suya is a spicy grilled meat skewer originating from the Hausa people of Northern Nigeria."},
-    ],
-  },
-  humanrights:{
-    easy:[
-      {q:"Human rights apply to all people regardless of nationality",a:true,f:"Human rights are universal — they apply to every person by virtue of being human."},
-      {q:"Slavery has been abolished worldwide",a:false,f:"Modern slavery and human trafficking still affect millions globally."},
-      {q:"Education is considered a human right",a:true,f:"Article 26 of the Universal Declaration of Human Rights declares education a right."},
-    ],
-    medium:[
-      {q:"The Universal Declaration of Human Rights was adopted in 1948",a:true,f:"The UDHR was adopted by the UN General Assembly on December 10, 1948."},
-      {q:"Freedom of speech is an absolute right with no limits",a:false,f:"Free speech has legal limits — incitement to violence and defamation are examples."},
-      {q:"Children have specific rights under international law",a:true,f:"The UN Convention on the Rights of the Child (1989) protects children's rights specifically."},
-    ],
-    hard:[
-      {q:"The International Criminal Court can prosecute individuals for genocide",a:true,f:"The ICC has jurisdiction over genocide, war crimes, and crimes against humanity."},
-      {q:"All UN member states have ratified the Convention Against Torture",a:false,f:"Several countries have not ratified the CAT."},
-      {q:"Nelson Mandela spent 27 years in prison",a:true,f:"Mandela was imprisoned from 1964 to 1990, primarily on Robben Island."},
-    ],
-  },
-  geography:{
-    easy:[
-      {q:"Australia is both a country and a continent",a:true,f:"Australia is the world's smallest continent and a sovereign country."},
-      {q:"The Sahara is the world's largest desert",a:false,f:"Antarctica is technically the world's largest desert by area."},
-      {q:"The Amazon River is in South America",a:true,f:"The Amazon flows through Brazil and several other South American countries."},
-    ],
-    medium:[
-      {q:"Nigeria is located in West Africa",a:true,f:"Nigeria is in West Africa, bordered by Benin, Niger, Chad, and Cameroon."},
-      {q:"Mount Everest is located in China",a:false,f:"Everest sits on the border of Nepal and Tibet (China)."},
-      {q:"The Nile River flows northward",a:true,f:"The Nile flows northward from its source in East Africa to the Mediterranean Sea."},
-    ],
-    hard:[
-      {q:"Vatican City is the smallest country in the world",a:true,f:"Vatican City covers 44 hectares, making it the world's smallest country."},
-      {q:"Indonesia has more islands than the Philippines",a:true,f:"Indonesia has around 17,000 islands, more than the Philippines' approximately 7,600."},
-      {q:"The deepest point on Earth is in the Pacific Ocean",a:true,f:"The Mariana Trench's Challenger Deep, in the Pacific, is the deepest known point at ~11km."},
-    ],
-  },
-  popculture:{
-    easy:[
-      {q:"TikTok is a social media platform",a:true,f:"TikTok is a short-video sharing platform owned by ByteDance."},
-      {q:"Harry Potter was written by J.K. Rowling",a:true,f:"Joanne Rowling published the first Harry Potter book in 1997."},
-      {q:"Pokémon originated in Japan",a:true,f:"Pokémon was created by Satoshi Tajiri and Ken Sugimori in Japan."},
-    ],
-    medium:[
-      {q:"The phrase 'going viral' has existed since the internet began",a:false,f:"'Going viral' became common internet slang only in the early 2000s."},
-      {q:"Stranger Things is a Netflix original series",a:true,f:"Stranger Things premiered on Netflix in July 2016."},
-      {q:"Snapchat was the first platform to introduce stories",a:true,f:"Snapchat introduced the Stories format in 2013; Instagram copied it in 2016."},
-    ],
-    hard:[
-      {q:"The term 'meme' was coined by Richard Dawkins",a:true,f:"Richard Dawkins coined 'meme' in his 1976 book The Selfish Gene."},
-      {q:"K-pop originated in South Korea in the 1990s",a:true,f:"K-pop's modern era began in the 1990s with groups like H.O.T. and S.E.S."},
-      {q:"Instagram was acquired by Facebook for $1 billion",a:true,f:"Facebook acquired Instagram in 2012 for approximately $1 billion."},
-    ],
-  },
-  relationships:{
-    easy:[
-      {q:"Communication is important in a relationship",a:true,f:"Studies consistently show communication is one of the top factors in healthy relationships."},
-      {q:"Jealousy is always a sign of love",a:false,f:"Excessive jealousy is often linked to insecurity, not love."},
-      {q:"Friendships are a type of relationship",a:true,f:"Relationships include romantic, platonic, familial, and professional bonds."},
-    ],
-    medium:[
-      {q:"Long-distance relationships never work",a:false,f:"Many long-distance relationships succeed with communication and trust."},
-      {q:"Attachment styles are formed in childhood",a:true,f:"Attachment theory (Bowlby) shows early bonds shape adult relationship patterns."},
-      {q:"Love languages is a concept created by Gary Chapman",a:true,f:"Gary Chapman introduced the 5 Love Languages in his 1992 book."},
-    ],
-    hard:[
-      {q:"Research shows that couples who argue never have healthy relationships",a:false,f:"Gottman's research shows it's not whether couples argue but how they resolve conflict that matters."},
-      {q:"Oxytocin is known as the 'bonding hormone'",a:true,f:"Oxytocin is released during physical touch and social bonding, earning its nickname."},
-      {q:"The divorce rate has been consistently rising since the 1970s in most Western countries",a:false,f:"Divorce rates in many Western countries have actually declined since the 1980s."},
-    ],
-  },
-};
+// ALL_QUESTIONS now lives in ./triviaQuestions.js (imported at the top of this file) —
+// 20 questions per topic per difficulty so long-time players see far fewer repeats.
 
 const getQuestions = (topics, difficulty, count) => {
   const topicKeys = topics.length > 0 ? topics : Object.keys(ALL_QUESTIONS);
@@ -588,11 +347,27 @@ const ShareModal = ({ message, ownerName, onClose }) => {
     <Modal onClose={onClose}>
       <p className="syne" style={{fontWeight:700,fontSize:"1rem",marginBottom:6}}>Share this message</p>
       <p style={{fontSize:"0.83rem",color:"#888",marginBottom:20,fontWeight:300}}>Share it as an image, just like NGL</p>
-      <div ref={cardRef} style={{background:"#0e0e0e",borderRadius:16,padding:"32px 26px",marginBottom:20,textAlign:"center"}}>
-        <Icons.mask size={30} color="white"/>
-        <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.72rem",margin:"12px 0 8px",letterSpacing:"0.1em",textTransform:"uppercase"}}>Anonymous message</p>
-        <p style={{color:"white",fontSize:"1.05rem",lineHeight:1.7,fontStyle:"italic"}}>"{message}"</p>
-        <p style={{color:"rgba(255,255,255,0.3)",fontSize:"0.72rem",marginTop:18}}>{window.location.host}/{ownerName||"yourname"}</p>
+      <div ref={cardRef} style={{position:"relative",background:"linear-gradient(150deg,#1a0b2e 0%,#0e0e0e 42%,#2d0a1f 100%)",borderRadius:22,padding:"34px 24px",marginBottom:20,textAlign:"center",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:-46,left:-46,width:150,height:150,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,92,58,0.55) 0%,rgba(255,92,58,0) 70%)"}}/>
+        <div style={{position:"absolute",bottom:-56,right:-36,width:170,height:170,borderRadius:"50%",background:"radial-gradient(circle,rgba(124,58,237,0.5) 0%,rgba(124,58,237,0) 70%)"}}/>
+        <div style={{position:"absolute",top:"38%",right:-24,width:100,height:100,borderRadius:"50%",background:"radial-gradient(circle,rgba(236,72,153,0.45) 0%,rgba(236,72,153,0) 70%)"}}/>
+        <div style={{position:"relative",zIndex:1}}>
+          <div style={{display:"inline-flex",alignItems:"center",gap:7,background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.22)",borderRadius:50,padding:"7px 16px",marginBottom:22}}>
+            <LogoMask size={14} variant="white"/>
+            <span style={{color:"white",fontSize:"0.68rem",fontWeight:700,letterSpacing:"0.09em",textTransform:"uppercase"}}>Anonymous message</span>
+          </div>
+          <div style={{background:"white",borderRadius:18,padding:"28px 22px 24px",marginBottom:26,position:"relative",boxShadow:"0 14px 40px rgba(0,0,0,0.35)"}}>
+            <p style={{position:"absolute",top:2,left:16,fontSize:"2.8rem",color:"rgba(255,92,58,0.2)",fontFamily:"Georgia,serif",lineHeight:1}}>"</p>
+            <p style={{color:"#0e0e0e",fontSize:"1.05rem",lineHeight:1.65,fontWeight:600,position:"relative"}}>{message}</p>
+          </div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+            <LogoMask size={22} variant="white"/>
+            <div style={{textAlign:"left"}}>
+              <p style={{color:"white",fontSize:"0.86rem",fontWeight:800}}>Send me one too 👀</p>
+              <p style={{color:"rgba(255,255,255,0.55)",fontSize:"0.76rem"}}>{window.location.host}/{ownerName||"yourname"}</p>
+            </div>
+          </div>
+        </div>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         <button onClick={shareAsImage} disabled={generating} style={{padding:"14px",borderRadius:12,border:"none",background:"#ff5c3a",color:"white",fontWeight:700,cursor:generating?"default":"pointer",fontSize:"0.92rem",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:generating?0.7:1}}>
@@ -626,7 +401,7 @@ const Landing = ({ goTo }) => {
   return (
     <div style={{background:"#fafaf8",color:"#0e0e0e"}}>
       <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 30px",background:"rgba(250,250,248,0.9)",backdropFilter:"blur(16px)",borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:9}}><Icons.mask size={26}/><span className="syne" style={{fontWeight:800,fontSize:"1.2rem"}}>unmaskr</span></div>
+        <div style={{display:"flex",alignItems:"center",gap:9}}><LogoFull height={28}/></div>
         <div style={{display:"flex",gap:10}}>
           <Btn outline onClick={()=>goTo("login")}>Log in</Btn>
           <Btn onClick={()=>goTo("signup")}>Get started</Btn>
@@ -634,8 +409,8 @@ const Landing = ({ goTo }) => {
       </nav>
       <section style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"130px 24px 90px",position:"relative",overflow:"hidden"}}>
         <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 55% 45% at 15% 25%,rgba(255,92,58,0.09) 0%,transparent 70%),radial-gradient(ellipse 45% 40% at 85% 70%,rgba(255,205,60,0.11) 0%,transparent 70%)"}}/>
-        <div style={{position:"absolute",top:"8%",left:"4%",opacity:0.05}} className="float1"><Icons.mask size={120}/></div>
-        <div style={{position:"absolute",top:"55%",right:"5%",opacity:0.04}} className="float2"><Icons.mask size={130}/></div>
+        <div style={{position:"absolute",top:"8%",left:"4%",opacity:0.05}} className="float1"><LogoMask size={120}/></div>
+        <div style={{position:"absolute",top:"55%",right:"5%",opacity:0.04}} className="float2"><LogoMask size={130}/></div>
         <div style={{position:"relative",zIndex:1}}>
           <div className="fadeUp" style={{display:"inline-flex",alignItems:"center",gap:8,background:"#f0efec",border:"1px solid rgba(0,0,0,0.1)",borderRadius:100,padding:"6px 16px",fontSize:"0.78rem",fontWeight:500,color:"#888",marginBottom:28}}>
             <span style={{width:7,height:7,borderRadius:"50%",background:"#ff5c3a",display:"inline-block"}}/>Anonymous messages, reimagined
@@ -651,7 +426,7 @@ const Landing = ({ goTo }) => {
           <div style={{marginTop:44,display:"flex",flexDirection:"column",gap:10,maxWidth:400,margin:"44px auto 0"}}>
             {msgs.slice(0,vis).map((m,i)=>(
               <div key={i} style={{background:"white",borderRadius:14,padding:"14px 18px",boxShadow:"0 4px 20px rgba(0,0,0,0.06)",display:"flex",gap:12,alignItems:"center",textAlign:"left",animation:"fadeUp 0.4s ease both"}}>
-                <div style={{width:36,height:36,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icons.mask size={18}/></div>
+                <div style={{width:36,height:36,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><LogoMask size={18}/></div>
                 <div><p style={{fontSize:"0.88rem",color:"#0e0e0e",fontWeight:500}}>{m.t}</p><p style={{fontSize:"0.72rem",color:"#aaa",marginTop:2}}>{m.tm}</p></div>
               </div>
             ))}
@@ -699,7 +474,7 @@ const Landing = ({ goTo }) => {
         <Tag text="Games"/>
         <h2 className="syne" style={{fontSize:"clamp(1.9rem,4vw,2.9rem)",fontWeight:800,letterSpacing:"-0.02em",lineHeight:1.1,maxWidth:500}}>Play with friends</h2>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:20,marginTop:48}}>
-          {[{icon:<Icons.mask size={32}/>,t:"Mystery Lobby",d:"Host shares a link. Players pick preferences. Guess what others picked or get eliminated!",b:"For everyone",bc:"#0e0e0e",c:"#f0efec"},{icon:<Icons.money size={32} color="white"/>,t:"Stake & Win",d:"Bet real money on trivia questions. Select topics and difficulty. Winner takes home 85% of the pot.",b:"18+ only",bc:"#ff5c3a",c:"#0e0e0e"}].map(g=>(
+          {[{icon:<LogoMask size={32}/>,t:"Mystery Lobby",d:"Host shares a link. Players pick preferences. Guess what others picked or get eliminated!",b:"For everyone",bc:"#0e0e0e",c:"#f0efec"},{icon:<Icons.money size={32} color="white"/>,t:"Stake & Win",d:"Bet real money on trivia questions. Select topics and difficulty. Winner takes home 85% of the pot.",b:"18+ only",bc:"#ff5c3a",c:"#0e0e0e"}].map(g=>(
             <div key={g.t} className="game-card" style={{background:g.c,borderRadius:20,padding:"32px 28px",transition:"all 0.2s",cursor:"pointer",border:g.c==="#0e0e0e"?"none":"1px solid rgba(0,0,0,0.06)"}} onClick={()=>goTo("signup")}>
               <div style={{width:56,height:56,borderRadius:16,background:g.bc==="#0e0e0e"?"#0e0e0e":"rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>{g.icon}</div>
               <div style={{display:"inline-block",background:g.bc,color:"white",fontSize:"0.7rem",fontWeight:700,padding:"4px 12px",borderRadius:50,marginBottom:14}}>{g.b}</div>
@@ -715,7 +490,7 @@ const Landing = ({ goTo }) => {
         <Btn onClick={()=>goTo("signup")} style={{marginTop:36,padding:"16px 38px",fontSize:"1rem"}}>Create your free link</Btn>
       </div>
       <footer style={{padding:"32px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:16,borderTop:"1px solid rgba(0,0,0,0.08)",fontSize:"0.83rem",color:"#888"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}><Icons.mask size={20}/><span className="syne" style={{fontWeight:800,color:"#0e0e0e"}}>unmaskr</span></div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}><LogoFull height={22}/></div>
         <div style={{display:"flex",gap:22}}>{["Privacy","Terms","Safety","Contact"].map(l=><span key={l} style={{cursor:"pointer"}} onClick={()=>goTo("terms")}>{l}</span>)}</div>
         <span>© 2025 Unmaskr. All rights reserved.</span>
       </footer>
@@ -728,7 +503,7 @@ const Signup = ({ goTo, onSignupComplete, signupsDisabled }) => {
   if (signupsDisabled) return (
     <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
       <div style={{maxWidth:380}}>
-        <Icons.mask size={48}/>
+        <LogoMask size={48}/>
         <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginTop:20,marginBottom:12}}>Signups paused</h2>
         <p style={{color:"#888",fontSize:"0.9rem",lineHeight:1.7,marginBottom:24,fontWeight:300}}>We're not accepting new signups right now. Please check back soon.</p>
         <Btn onClick={()=>goTo("landing")} style={{width:"100%"}}>Back to homepage</Btn>
@@ -845,7 +620,7 @@ const Signup = ({ goTo, onSignupComplete, signupsDisabled }) => {
   return (
     <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",flexDirection:"column"}}>
       <div style={{padding:"20px 32px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:9,cursor:"pointer"}} onClick={()=>goTo("landing")}><Icons.mask size={24}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>unmaskr</span></div>
+        <div style={{display:"flex",alignItems:"center",gap:9,cursor:"pointer"}} onClick={()=>goTo("landing")}><LogoFull height={24}/></div>
         <span style={{fontSize:"0.85rem",color:"#888"}}>Have an account? <span style={{color:"#0e0e0e",fontWeight:500,cursor:"pointer",textDecoration:"underline"}} onClick={()=>goTo("login")}>Log in</span></span>
       </div>
       <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px"}}>
@@ -963,13 +738,13 @@ const Login = ({ goTo, onLoginComplete }) => {
   return (
     <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",flexDirection:"column"}}>
       <div style={{padding:"20px 32px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:9,cursor:"pointer"}} onClick={()=>goTo("landing")}><Icons.mask size={24}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>unmaskr</span></div>
+        <div style={{display:"flex",alignItems:"center",gap:9,cursor:"pointer"}} onClick={()=>goTo("landing")}><LogoFull height={24}/></div>
         <span style={{fontSize:"0.85rem",color:"#888"}}>No account? <span style={{color:"#0e0e0e",fontWeight:500,cursor:"pointer",textDecoration:"underline"}} onClick={()=>goTo("signup")}>Sign up free</span></span>
       </div>
       <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px"}}>
         <div className="popIn" style={{width:"100%",maxWidth:400}}>
           <div style={{textAlign:"center",marginBottom:32}}>
-            <Icons.mask size={44}/>
+            <LogoMask size={44}/>
             <h1 className="syne" style={{fontSize:"1.9rem",fontWeight:800,letterSpacing:"-0.02em",marginTop:16,marginBottom:8}}>Welcome back</h1>
             <p style={{color:"#888",fontSize:"0.9rem",fontWeight:300}}>Log in to see your anonymous messages</p>
           </div>
@@ -1118,16 +893,25 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
     setReplyText("");
   };
 
+  const [unlockError,setUnlockError] = useState("");
+
   const unlockHint = async (h, idx) => {
     if (unlocking || !userId) return;
     setUnlocking(true);
+    setUnlockError("");
     const price = cur.hints[idx] || cur.hints[1];
     const updated = [...activeMsg.hints,h.key];
 
-    // 1. Debit the unlocking user's wallet
-    const { data: myWallet } = await supabase.from("wallets").select("balance").eq("user_id", userId).single();
-    if (myWallet) {
-      await supabase.from("wallets").update({ balance: Number(myWallet.balance) - price, updated_at: new Date().toISOString() }).eq("user_id", userId);
+    // 1. Debit the unlocking user's wallet — atomic: the database checks the
+    // balance and deducts in one step, so it can never go negative even if
+    // this fires twice in quick succession (e.g. a double-click or a script).
+    const { error: spendError } = await supabase.rpc("spend_from_wallet", { p_user_id: userId, p_amount: price });
+    if (spendError) {
+      setUnlocking(false);
+      if (spendError.message?.includes("insufficient_funds")) setUnlockError("Not enough wallet balance for this hint. Top up your wallet to continue.");
+      else if (spendError.message?.includes("rate_limited")) setUnlockError("You're unlocking hints a little too fast — give it a minute and try again.");
+      else setUnlockError("Couldn't unlock this hint. Please try again.");
+      return;
     }
 
     // 2. Credit the message sender's wallet with their 50% share, if they have an
@@ -1135,17 +919,22 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
     if (activeMsg.senderEmail) {
       const { data: senderProfile } = await supabase.from("profiles").select("id").eq("email", activeMsg.senderEmail).maybeSingle();
       if (senderProfile) {
-        const { data: senderWallet } = await supabase.from("wallets").select("balance").eq("user_id", senderProfile.id).single();
-        if (senderWallet) {
-          await supabase.from("wallets").update({ balance: Number(senderWallet.balance) + price*0.5, updated_at: new Date().toISOString() }).eq("user_id", senderProfile.id);
-        }
+        await supabase.rpc("add_to_wallet", { p_user_id: senderProfile.id, p_amount: price*0.5 });
       }
     }
 
     // 3. Record the transaction
-    await supabase.from("transactions").insert({
+    const { error: txError } = await supabase.from("transactions").insert({
       user_id: userId, type: "hint_purchase", amount: price, currency: cur.code, status: "completed",
     });
+    if (txError) {
+      // Extremely rare: spend succeeded but the log insert was rejected (e.g. rate limit
+      // tripped between the two calls). Refund immediately so the user isn't shortchanged.
+      await supabase.rpc("add_to_wallet", { p_user_id: userId, p_amount: price });
+      setUnlocking(false);
+      setUnlockError("Couldn't complete this purchase — your balance has been refunded, please try again.");
+      return;
+    }
 
     // 4. Mark the hint unlocked on the message
     await supabase.from("messages").update({ hints_unlocked: updated }).eq("id", activeMsg.id);
@@ -1205,7 +994,7 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
         <div className="fadeUp2" style={{display:"flex",flexDirection:"column",gap:10}}>
           {messages.map(msg=>(
             <div key={msg.id} className="msg-row" onClick={()=>openMsg(msg)} style={{background:"white",borderRadius:16,padding:"18px 20px",border:`1px solid ${!msg.read?"rgba(255,92,58,0.25)":"rgba(0,0,0,0.07)"}`,cursor:"pointer",transition:"all 0.18s",display:"flex",gap:14,alignItems:"flex-start"}}>
-              <div style={{width:40,height:40,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icons.mask size={18}/></div>
+              <div style={{width:40,height:40,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><LogoMask size={18}/></div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><span style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa"}}>Anonymous</span><span style={{fontSize:"0.75rem",color:"#ccc"}}>{msg.time}</span></div>
                 <p style={{fontSize:"0.92rem",color:msg.read?"#555":"#0e0e0e",fontWeight:msg.read?300:500,lineHeight:1.5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{msg.text}</p>
@@ -1226,7 +1015,7 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
 
       {activeMsg&&!shareMsg&&!receipt&&(
         <Modal onClose={()=>{setActiveMsg(null);setShowHints(false);setShowEmoji(false);}}>
-          <div style={{width:52,height:52,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><Icons.mask size={24}/></div>
+          <div style={{width:52,height:52,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><LogoMask size={24}/></div>
           <p style={{textAlign:"center",fontSize:"0.8rem",color:"#aaa",marginBottom:16}}>Anonymous · {activeMsg.time}</p>
           <p style={{fontSize:"1.05rem",lineHeight:1.75,textAlign:"center",color:"#0e0e0e",marginBottom:16}}>{activeMsg.text}</p>
           {activeMsg.reactions.length>0&&<div style={{textAlign:"center",marginBottom:12,fontSize:"1.2rem"}}>{activeMsg.reactions.join(" ")}</div>}
@@ -1250,7 +1039,7 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
             <div style={{marginBottom:16}}>
               {activeMsg.replies.map((r,i)=>(
                 <div key={i} style={{background:"#f0efec",borderRadius:12,padding:"12px 14px",marginBottom:8,display:"flex",gap:10,alignItems:"flex-start"}}>
-                  <div style={{width:28,height:28,borderRadius:"50%",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icons.mask size={14} color="white"/></div>
+                  <div style={{width:28,height:28,borderRadius:"50%",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><LogoMask size={14} variant="white"/></div>
                   <div><p style={{fontSize:"0.78rem",fontWeight:600,color:"#0e0e0e",marginBottom:3}}>{username} replied:</p><p style={{fontSize:"0.88rem",color:"#444",lineHeight:1.6}}>{r}</p></div>
                 </div>
               ))}
@@ -1314,6 +1103,7 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
                       </div>);
                     })}
                 </div>
+                {unlockError && <p style={{marginTop:12,padding:"10px 14px",background:"#fff5f5",border:"1px solid #fca5a5",borderRadius:10,fontSize:"0.8rem",color:"#ef4444"}}>{unlockError}</p>}
               </>
             )}
           </div>
@@ -1811,7 +1601,7 @@ const Games = ({ goTo, mysteryFrozen=false, stakeFrozen=false }) => (
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
         <div className="game-card fadeUp1" onClick={()=>!mysteryFrozen&&goTo("game-lobby")} style={{background:"white",borderRadius:20,padding:"28px 24px",border:"1px solid rgba(0,0,0,0.08)",cursor:mysteryFrozen?"not-allowed":"pointer",opacity:mysteryFrozen?0.5:1,transition:"all 0.2s",display:"flex",gap:20,alignItems:"center"}}>
-          <div style={{width:64,height:64,borderRadius:18,background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icons.mask size={32}/></div>
+          <div style={{width:64,height:64,borderRadius:18,background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><LogoMask size={32}/></div>
           <div style={{flex:1}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
               <h3 className="syne" style={{fontSize:"1.1rem",fontWeight:800}}>Mystery Lobby</h3>
@@ -1837,33 +1627,14 @@ const Games = ({ goTo, mysteryFrozen=false, stakeFrozen=false }) => (
   </div>
 );
 
-// ── MYSTERY LOBBY (still simulated) ────────────────────────────────────────────
+// ── MYSTERY LOBBY (real-time, host-authored multiple-choice quiz) ─────────────
+// Host writes their own questions (4 options each, one marked correct, no
+// duplicate option text). Fixes the old fixed-category system where players
+// saw the same 4 questions every game. Options are shuffled once per session
+// at start time so the "correct" slot isn't always in the same place.
 const AVATAR_COLORS = ["#0e0e0e","#ff5c3a","#6366f1","#059669","#d97706","#ec4899"];
 
-const MYSTERY_CATEGORIES = [
-  { key:"food", label:"Favourite food?" },
-  { key:"pet", label:"Favourite pet?" },
-  { key:"car_brand", label:"Favourite car brand?" },
-  { key:"phone_brand", label:"Favourite phone brand?" },
-];
-
-const MYSTERY_FALLBACK_OPTIONS = {
-  food: ["Pizza","Jollof Rice","Suya","Pasta","Burger","Sushi","Amala"],
-  pet: ["Dogs","Cats","Fish","Birds","None"],
-  car_brand: ["Toyota","Mercedes-Benz","Honda","Lexus","Ferrari","Innoson"],
-  phone_brand: ["iPhone","Samsung","Tecno","Infinix","Google Pixel"],
-};
-
 const shuffleArr = (arr) => [...arr].sort(()=>Math.random()-0.5);
-
-const getRoundOptions = (correctAnswer, category, allPlayers) => {
-  const realAnswers = allPlayers.map(p=>p.answers?.[category]).filter(Boolean);
-  const pool = new Set([correctAnswer, ...realAnswers]);
-  const fallback = MYSTERY_FALLBACK_OPTIONS[category] || [];
-  let i = 0;
-  while (pool.size < 4 && i < fallback.length) { pool.add(fallback[i]); i++; }
-  return shuffleArr([...pool]);
-};
 
 const makeLobbyCode = () => "UNMSK-" + Math.floor(1000 + Math.random()*9000);
 
@@ -1873,11 +1644,21 @@ const getGuestToken = () => {
   return token;
 };
 
+const EMPTY_QUESTION_DRAFT = { q:"", options:["","","",""], correctIndex:0 };
+
+// Shuffle each question's options once, keeping correctIndex pointing at the
+// right (now-moved) option — locked in for the whole game session.
+const shuffleQuestionOptions = (questions) => questions.map(item => {
+  const correctText = item.options[item.correctIndex];
+  const shuffled = shuffleArr(item.options);
+  return { q: item.q, options: shuffled, correctIndex: shuffled.indexOf(correctText) };
+});
+
 const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
   if (frozen) return (
     <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
       <div style={{maxWidth:380}}>
-        <Icons.mask size={48}/>
+        <LogoMask size={48}/>
         <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginTop:20,marginBottom:12}}>Mystery Lobby paused</h2>
         <p style={{color:"#888",fontSize:"0.9rem",lineHeight:1.7,marginBottom:24,fontWeight:300}}>This game is temporarily unavailable. Check back soon.</p>
         <Btn onClick={()=>goTo("games")} style={{width:"100%"}}>Back to games</Btn>
@@ -1891,13 +1672,23 @@ const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
   const [session,setSession] = useState(null);
   const [myPlayer,setMyPlayer] = useState(null);
   const [players,setPlayers] = useState([]);
-  const [answers,setAnswers] = useState({});
   const [lobbyCopied,setLobbyCopied] = useState(false);
   const [error,setError] = useState("");
   const [loading,setLoading] = useState(false);
-  const [myGuess,setMyGuess] = useState("");
-  const [myGuesses,setMyGuesses] = useState({}); // round -> guessed value, so I know if I've already guessed
-  const [revealInfo,setRevealInfo] = useState(null);
+
+  // ── Question builder state (host, setup phase) ──────────────────────────
+  const [questions,setQuestions] = useState([]);
+  const [showQForm,setShowQForm] = useState(false);
+  const [editingIdx,setEditingIdx] = useState(null);
+  const [qDraft,setQDraft] = useState(EMPTY_QUESTION_DRAFT);
+  const [qError,setQError] = useState("");
+
+  // ── Playing state ────────────────────────────────────────────────────────
+  const [myQuestions,setMyQuestions] = useState([]);
+  const [qIndex,setQIndex] = useState(0);
+  const [myScore,setMyScore] = useState(0);
+  const [answered,setAnswered] = useState(null);
+  const [showAnswer,setShowAnswer] = useState(false);
 
   const fetchPlayers = async (sessionId) => {
     const { data } = await supabase.from("game_players").select("*").eq("session_id", sessionId).order("joined_at");
@@ -1915,7 +1706,7 @@ const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
     if (e || !data) { setError("This lobby doesn't exist or has ended."); return; }
     setSession(data);
     fetchPlayers(data.id);
-    if (data.status === "playing") setPhase("playing");
+    if (data.status === "playing") { setMyQuestions(data.custom_questions || []); setPhase("playing"); }
     else if (data.status === "finished") setPhase("result");
   };
 
@@ -1926,21 +1717,45 @@ const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
       .on('postgres_changes', { event:'*', schema:'public', table:'game_players', filter:`session_id=eq.${session.id}` }, () => fetchPlayers(session.id))
       .on('postgres_changes', { event:'UPDATE', schema:'public', table:'game_sessions', filter:`id=eq.${session.id}` }, (payload) => {
         setSession(payload.new);
-        if (payload.new.status === "playing") { setPhase(p => p==="lobby"?"playing":p); setMyGuess(""); }
+        if (payload.new.status === "playing" && phase !== "playing") {
+          setMyQuestions(payload.new.custom_questions || []);
+          setPhase("playing");
+        }
         if (payload.new.status === "finished") setPhase("result");
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [session?.id]);
 
+  // ── Question builder logic ───────────────────────────────────────────────
+  const openAddQuestion = () => { setQDraft({ q:"", options:["","","",""], correctIndex:0 }); setEditingIdx(null); setQError(""); setShowQForm(true); };
+  const openEditQuestion = (idx) => { setQDraft({ ...questions[idx], options:[...questions[idx].options] }); setEditingIdx(idx); setQError(""); setShowQForm(true); };
+  const closeQForm = () => { setShowQForm(false); setQError(""); };
+  const removeQuestion = (idx) => setQuestions(qs => qs.filter((_,i)=>i!==idx));
+
+  const saveQuestion = () => {
+    const q = qDraft.q.trim();
+    const opts = qDraft.options.map(o=>o.trim());
+    if (!q) { setQError("Enter the question."); return; }
+    if (opts.some(o=>!o)) { setQError("Fill in all 4 options."); return; }
+    const lower = opts.map(o=>o.toLowerCase());
+    if (new Set(lower).size !== 4) { setQError("Options can't repeat — each one needs to be different."); return; }
+    const clean = { q, options: opts, correctIndex: qDraft.correctIndex };
+    if (editingIdx !== null) setQuestions(qs => qs.map((item,i)=> i===editingIdx ? clean : item));
+    else setQuestions(qs => [...qs, clean]);
+    setShowQForm(false); setQError("");
+  };
+
+  // ── Lobby actions ────────────────────────────────────────────────────────
   const createLobby = async () => {
     const name = userName || guestName.trim();
     if (!name) { setError("Enter your name"); return; }
+    if (questions.length < 3) { setError("Add at least 3 questions before creating the lobby."); return; }
     setError(""); setLoading(true);
     const code = makeLobbyCode();
     const { data: newSession, error: sErr } = await supabase.from("game_sessions").insert({
       lobby_code: code, game_type:"mystery_lobby", host_user_id: userId||null, host_name: name,
-      categories: MYSTERY_CATEGORIES.map(c=>c.key),
+      custom_questions: questions,
     }).select().single();
     if (sErr) { setError(sErr.message); setLoading(false); return; }
     const { data: hostPlayer } = await supabase.from("game_players").insert({
@@ -1948,7 +1763,7 @@ const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
     }).select().single();
     setSession(newSession); setMyPlayer(hostPlayer);
     fetchPlayers(newSession.id);
-    setLoading(false); setPhase("answering");
+    setLoading(false); setPhase("lobby");
   };
 
   const joinLobby = async () => {
@@ -1962,67 +1777,57 @@ const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
     if (jErr) { setError(jErr.message); return; }
     setMyPlayer(player);
     fetchPlayers(session.id);
-    setPhase("answering");
-  };
-
-  const submitAnswers = async () => {
-    if (MYSTERY_CATEGORIES.some(c => !answers[c.key]?.trim())) { setError("Please answer every question"); return; }
-    setError(""); setLoading(true);
-    await supabase.from("game_players").update({ answers, ready:true }).eq("id", myPlayer.id);
-    setLoading(false);
-    fetchPlayers(session.id);
     setPhase("lobby");
   };
 
   const startGame = async () => {
-    const ready = players.filter(p=>p.ready);
-    if (ready.length < 2) { setError("Need at least 2 players ready before starting"); return; }
-    await supabase.from("game_sessions").update({
-      status:"playing", current_round:0, current_target_player_id: ready[0].id, current_category: MYSTERY_CATEGORIES[0].key, round_revealed:false,
-    }).eq("id", session.id);
+    if (players.length < 2) { setError("Need at least 2 players before starting"); return; }
+    const shuffled = shuffleQuestionOptions(session.custom_questions || []);
+    await supabase.from("game_sessions").update({ status:"playing", custom_questions: shuffled }).eq("id", session.id);
+    setMyQuestions(shuffled);
+    setPhase("playing");
   };
 
-  const submitGuess = async (value) => {
-    if (!value) return;
-    await supabase.from("game_guesses").insert({
-      session_id: session.id, round: session.current_round, guesser_player_id: myPlayer.id, guessed_value: value,
-    });
-    setMyGuesses(g => ({ ...g, [session.current_round]: value }));
-    setMyGuess("");
+  const submitAnswer = (optionIdx) => {
+    const correct = optionIdx === myQuestions[qIndex]?.correctIndex;
+    setAnswered(optionIdx);
+    setShowAnswer(true);
+    if (correct) setMyScore(s=>s+1);
   };
 
-  const revealRound = async () => {
-    const target = players.find(p=>p.id===session.current_target_player_id);
-    const correctAnswer = target?.answers?.[session.current_category] || "";
-    const { data: guesses } = await supabase.from("game_guesses").select("*").eq("session_id", session.id).eq("round", session.current_round);
-    for (const g of (guesses||[])) {
-      const correct = g.guessed_value.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
-      await supabase.from("game_guesses").update({ is_correct: correct }).eq("id", g.id);
-      if (correct) {
-        const guesser = players.find(p=>p.id===g.guesser_player_id);
-        if (guesser) await supabase.from("game_players").update({ score:(guesser.score||0)+1 }).eq("id", guesser.id);
+  const nextQuestion = async () => {
+    if (qIndex === myQuestions.length-1) {
+      await supabase.from("game_players").update({ score: myScore, ready:true }).eq("id", myPlayer.id);
+      const { data: fresh } = await supabase.from("game_players").select("*").eq("session_id", session.id);
+      if (fresh && fresh.every(p=>p.ready)) {
+        await finishGame(fresh);
+      } else {
+        fetchPlayers(session.id);
+        setPhase("waiting-others");
       }
+    } else {
+      setQIndex(i=>i+1); setShowAnswer(false); setAnswered(null);
     }
-    setRevealInfo({ target, category: session.current_category, correctAnswer, guesses: guesses||[] });
-    await supabase.from("game_sessions").update({ round_revealed:true }).eq("id", session.id);
-    fetchPlayers(session.id);
   };
 
-  const nextRound = async () => {
-    const readyPlayers = players.filter(p=>p.ready);
-    const nextRoundNum = session.current_round + 1;
-    const totalCombos = readyPlayers.length * MYSTERY_CATEGORIES.length;
-    if (nextRoundNum >= totalCombos) {
-      await supabase.from("game_sessions").update({ status:"finished" }).eq("id", session.id);
-      return;
-    }
-    const targetIdx = nextRoundNum % readyPlayers.length;
-    const catIdx = Math.floor(nextRoundNum / readyPlayers.length) % MYSTERY_CATEGORIES.length;
-    setRevealInfo(null);
-    await supabase.from("game_sessions").update({
-      current_round: nextRoundNum, current_target_player_id: readyPlayers[targetIdx].id, current_category: MYSTERY_CATEGORIES[catIdx].key, round_revealed:false,
-    }).eq("id", session.id);
+  const finishGame = async (finalPlayers) => {
+    await supabase.from("game_sessions").update({ status:"finished" }).eq("id", session.id);
+    fetchPlayers(session.id);
+    setPhase("result");
   };
+
+  // Poll for other players finishing while I wait
+  useEffect(() => {
+    if (phase !== "waiting-others" || !session) return;
+    const interval = setInterval(async () => {
+      const { data: fresh } = await supabase.from("game_players").select("*").eq("session_id", session.id);
+      if (fresh) {
+        setPlayers(fresh);
+        if (fresh.every(p=>p.ready)) { clearInterval(interval); await finishGame(fresh); }
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [phase, session]);
 
   const shareLink = `${window.location.origin}/join/${session?.lobby_code}`;
 
@@ -2030,14 +1835,16 @@ const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
   if (phase==="join") return (
     <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px"}}>
       <div className="popIn" style={{width:"100%",maxWidth:400,textAlign:"center"}}>
-        <Icons.mask size={44}/>
+        <LogoMask size={44}/>
         <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginTop:16,marginBottom:8}}>Join Mystery Lobby</h2>
         {loading && <p style={{color:"#888"}}>Loading lobby...</p>}
         {error && <p style={{color:"#ef4444",fontSize:"0.85rem",marginBottom:16}}>{error}</p>}
         {session && !error && (
           <>
-            <p style={{color:"#888",fontSize:"0.9rem",marginBottom:24,fontWeight:300}}>Hosted by <strong>{session.host_name}</strong> — enter your name to join.</p>
+            <p style={{color:"#888",fontSize:"0.9rem",marginBottom:8,fontWeight:300}}>Hosted by <strong>{session.host_name}</strong> — enter your name to join.</p>
+            <p style={{color:"#aaa",fontSize:"0.82rem",marginBottom:24}}>{(session.custom_questions||[]).length} question{(session.custom_questions||[]).length===1?"":"s"} written by the host</p>
             {!userName && <Inp placeholder="Your name" value={guestName} onChange={e=>setGuestName(e.target.value)} style={{marginBottom:12}}/>}
+            {error && <p style={{color:"#ef4444",fontSize:"0.85rem",marginBottom:12}}>{error}</p>}
             <Btn onClick={joinLobby} style={{width:"100%"}} disabled={loading}>Join lobby</Btn>
           </>
         )}
@@ -2045,45 +1852,95 @@ const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
     </div>
   );
 
-  // ── SETUP screen (creating a new lobby) ──────────────────────────────────
+  // ── SETUP screen (host writes the questions for this game) ───────────────
   if (phase==="setup") return (
     <div style={{minHeight:"100vh",background:"#fafaf8"}}>
       <div style={{padding:"20px 28px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
         <BackBtn onClick={()=>goTo("games")}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Mystery Lobby</span>
       </div>
-      <div style={{maxWidth:480,margin:"0 auto",padding:"40px 24px",textAlign:"center"}}>
-        <div style={{width:64,height:64,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><Icons.mask size={32}/></div>
-        <h2 className="syne" style={{fontSize:"1.8rem",fontWeight:800,marginBottom:8}}>Create a Lobby</h2>
-        <p style={{color:"#888",fontSize:"0.9rem",fontWeight:300,marginBottom:28}}>Everyone answers a few questions about themselves, then guesses what everyone else picked.</p>
-        {!userName && <Inp placeholder="Your name" value={guestName} onChange={e=>setGuestName(e.target.value)} style={{marginBottom:12}}/>}
-        {error && <p style={{color:"#ef4444",fontSize:"0.85rem",marginBottom:12}}>{error}</p>}
-        <Btn onClick={createLobby} style={{width:"100%",padding:"15px"}} disabled={loading}>{loading?"Creating...":"Create lobby"}</Btn>
-      </div>
-    </div>
-  );
+      <div style={{maxWidth:560,margin:"0 auto",padding:"32px 24px 100px"}}>
+        <div style={{textAlign:"center",marginBottom:28}}>
+          <div style={{width:56,height:56,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><LogoMask size={28}/></div>
+          <h2 className="syne" style={{fontSize:"1.5rem",fontWeight:800,marginBottom:6}}>Write your own questions</h2>
+          <p style={{color:"#888",fontSize:"0.88rem",fontWeight:300,lineHeight:1.6}}>Each question needs 4 answer options with one marked correct. Everyone who joins answers the same set — fresh questions every time means no more repeats.</p>
+        </div>
 
-  // ── ANSWERING screen (submit your own answers before entering the lobby room) ──
-  if (phase==="answering") return (
-    <div style={{minHeight:"100vh",background:"#fafaf8"}}>
-      <div style={{padding:"20px 28px",borderBottom:"1px solid rgba(0,0,0,0.07)"}}><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Answer about yourself</span></div>
-      <div style={{maxWidth:480,margin:"0 auto",padding:"32px 24px"}}>
-        <p style={{color:"#888",fontSize:"0.88rem",marginBottom:24,fontWeight:300}}>Your friends will try to guess these — answer honestly!</p>
-        {MYSTERY_CATEGORIES.map(c => (
-          <div key={c.key} style={{marginBottom:16}}>
-            <label style={{fontSize:"0.85rem",fontWeight:600,marginBottom:8,display:"block"}}>{c.label}</label>
-            <Inp value={answers[c.key]||""} onChange={e=>setAnswers(a=>({...a,[c.key]:e.target.value}))}/>
+        {!userName && (
+          <div style={{marginBottom:24}}>
+            <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Your name</label>
+            <Inp placeholder="Your name" value={guestName} onChange={e=>setGuestName(e.target.value)}/>
           </div>
-        ))}
-        {error && <p style={{color:"#ef4444",fontSize:"0.85rem",marginBottom:12}}>{error}</p>}
-        <Btn onClick={submitAnswers} style={{width:"100%",marginTop:8,padding:"15px"}} disabled={loading}>{loading?"Saving...":"Enter lobby"}</Btn>
+        )}
+
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+          <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em"}}>Questions ({questions.length})</label>
+          {questions.length>0 && questions.length<3 && <span style={{fontSize:"0.75rem",color:"#ff5c3a"}}>Add {3-questions.length} more</span>}
+        </div>
+
+        {questions.length===0 && !showQForm && (
+          <div style={{textAlign:"center",padding:"36px 20px",background:"white",borderRadius:16,border:"1px dashed rgba(0,0,0,0.15)",marginBottom:16}}>
+            <p style={{color:"#aaa",fontSize:"0.88rem",marginBottom:4}}>No questions yet</p>
+            <p style={{color:"#ccc",fontSize:"0.78rem"}}>Add at least 3 to create a lobby</p>
+          </div>
+        )}
+
+        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+          {questions.map((item,idx)=>(
+            <div key={idx} style={{background:"white",borderRadius:16,padding:"16px 18px",border:"1px solid rgba(0,0,0,0.08)"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:10}}>
+                <p style={{fontWeight:700,fontSize:"0.92rem",flex:1}}>{idx+1}. {item.q}</p>
+                <div style={{display:"flex",gap:4,flexShrink:0}}>
+                  <button onClick={()=>openEditQuestion(idx)} style={{padding:6,borderRadius:8,border:"none",background:"#f0efec",cursor:"pointer",display:"flex"}}><Icons.settings s={13} c="#555"/></button>
+                  <button onClick={()=>removeQuestion(idx)} style={{padding:6,borderRadius:8,border:"none",background:"#fff5f5",cursor:"pointer",display:"flex"}}><Icons.close s={13} c="#ef4444"/></button>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                {item.options.map((opt,oi)=>(
+                  <div key={oi} style={{padding:"7px 10px",borderRadius:8,fontSize:"0.78rem",background:oi===item.correctIndex?"#f0fff4":"#fafaf8",color:oi===item.correctIndex?"#166534":"#666",border:`1px solid ${oi===item.correctIndex?"#86efac":"rgba(0,0,0,0.06)"}`,display:"flex",alignItems:"center",gap:5}}>
+                    {oi===item.correctIndex && <Icons.check s={11} c="#16a34a"/>}{opt}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {!showQForm ? (
+          <button onClick={openAddQuestion} style={{width:"100%",padding:"14px",borderRadius:14,border:"1.5px dashed rgba(0,0,0,0.2)",background:"white",cursor:"pointer",fontSize:"0.9rem",fontWeight:600,color:"#555",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:20}}>
+            <Icons.plus s={16} c="#555"/>Add question
+          </button>
+        ) : (
+          <div className="popIn" style={{background:"white",borderRadius:16,padding:"20px",border:"1.5px solid #0e0e0e",marginBottom:20}}>
+            <p className="syne" style={{fontWeight:700,fontSize:"0.95rem",marginBottom:14}}>{editingIdx!==null?"Edit question":"New question"}</p>
+            <Inp placeholder="e.g. What's my favourite food?" value={qDraft.q} onChange={e=>setQDraft(d=>({...d,q:e.target.value}))} style={{marginBottom:14}}/>
+            <p style={{fontSize:"0.78rem",color:"#aaa",marginBottom:8}}>4 options — tap the circle to mark the correct one</p>
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
+              {qDraft.options.map((opt,oi)=>(
+                <div key={oi} style={{display:"flex",alignItems:"center",gap:10}}>
+                  <button onClick={()=>setQDraft(d=>({...d,correctIndex:oi}))} style={{width:24,height:24,borderRadius:"50%",flexShrink:0,border:`2px solid ${qDraft.correctIndex===oi?"#16a34a":"rgba(0,0,0,0.2)"}`,background:qDraft.correctIndex===oi?"#16a34a":"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    {qDraft.correctIndex===oi && <Icons.check s={13} c="white"/>}
+                  </button>
+                  <Inp placeholder={`Option ${oi+1}`} value={opt} onChange={e=>setQDraft(d=>({...d,options:d.options.map((o,i)=>i===oi?e.target.value:o)}))} style={{flex:1}}/>
+                </div>
+              ))}
+            </div>
+            {qError && <p style={{color:"#ef4444",fontSize:"0.82rem",marginBottom:12}}>{qError}</p>}
+            <div style={{display:"flex",gap:10}}>
+              <Btn outline onClick={closeQForm} style={{flex:1}}>Cancel</Btn>
+              <Btn onClick={saveQuestion} style={{flex:1}}>Save question</Btn>
+            </div>
+          </div>
+        )}
+
+        {error && <p style={{color:"#ef4444",fontSize:"0.85rem",marginBottom:12,textAlign:"center"}}>{error}</p>}
+        <Btn onClick={createLobby} style={{width:"100%",padding:"15px"}} disabled={loading || questions.length<3}>{loading?"Creating...":"Create lobby"}</Btn>
       </div>
     </div>
   );
 
   // ── LOBBY room (waiting for players, real-time list) ─────────────────────
-  if (phase==="lobby") {
+  if (phase==="lobby" && session) {
     const isHost = myPlayer?.is_host;
-    const readyCount = players.filter(p=>p.ready).length;
     return (
       <div style={{minHeight:"100vh",background:"#fafaf8"}}>
         <div style={{padding:"20px 28px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
@@ -2096,14 +1953,15 @@ const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
             <button onClick={()=>{navigator.clipboard?.writeText(shareLink);setLobbyCopied(true);setTimeout(()=>setLobbyCopied(false),2000);}} style={{padding:"10px 20px",borderRadius:50,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",cursor:"pointer",fontSize:"0.85rem",display:"inline-flex",alignItems:"center",gap:8}}>
               <Icons.copy s={14} c="#555"/>{lobbyCopied?"Copied!":"Copy link"}
             </button>
+            <p style={{fontSize:"0.78rem",color:"#aaa",marginTop:14}}>{(session.custom_questions||[]).length} questions ready to play</p>
           </div>
           <div style={{background:"white",borderRadius:20,padding:"24px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:24}}>
-            <p style={{fontSize:"0.78rem",fontWeight:600,color:"#aaa",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:16}}>Players ({players.length}) — {readyCount} ready</p>
+            <p style={{fontSize:"0.78rem",fontWeight:600,color:"#aaa",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:16}}>Players ({players.length})</p>
             {players.map((p,i)=>(
               <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
                 <Avatar size={30} bg={AVATAR_COLORS[i%AVATAR_COLORS.length]} iconSize={16}/>
                 <span style={{flex:1,fontSize:"0.92rem",fontWeight:500}}>{p.display_name}{p.is_host&&" (Host)"}</span>
-                <span style={{fontSize:"0.78rem",color:p.ready?"#16a34a":"#aaa",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>{p.ready?<><Icons.check s={12} c="#16a34a"/>Ready</>:"Answering..."}</span>
+                <Icons.check s={14} c="#16a34a"/>
               </div>
             ))}
           </div>
@@ -2118,68 +1976,50 @@ const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
     );
   }
 
-  // ── PLAYING (real round-by-round, synced live) ────────────────────────────
-  if (phase==="playing" && session) {
-    const target = players.find(p=>p.id===session.current_target_player_id);
-    const isTarget = myPlayer?.id === session.current_target_player_id;
-    const cat = MYSTERY_CATEGORIES.find(c=>c.key===session.current_category);
-    const targetColor = AVATAR_COLORS[players.findIndex(p=>p.id===target?.id)%AVATAR_COLORS.length];
-    const hasGuessed = myGuesses[session.current_round] !== undefined;
-    const isHost = myPlayer?.is_host;
-    const correctAnswer = target?.answers?.[session.current_category] || "";
-    const roundOptions = target ? getRoundOptions(correctAnswer, session.current_category, players) : [];
-    return (
-      <div style={{minHeight:"100vh",background:"#fafaf8"}}>
-        <div style={{padding:"16px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-          <span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Round {session.current_round+1}</span>
-          <span style={{background:"#0e0e0e",color:"white",padding:"6px 14px",borderRadius:50,fontSize:"0.83rem",fontWeight:600}}>{myPlayer?.score||0} pts</span>
-        </div>
-        <div style={{maxWidth:480,margin:"0 auto",padding:"32px 24px"}}>
-          <div className="fadeUp" style={{background:"#0e0e0e",borderRadius:20,padding:"24px",marginBottom:24,textAlign:"center"}}>
-            <div style={{marginBottom:8,display:"flex",justifyContent:"center"}}><Avatar size={48} bg={targetColor} iconSize={24}/></div>
-            <p style={{color:"rgba(255,255,255,0.6)",fontSize:"0.85rem",marginBottom:4}}>Guess about</p>
-            <p style={{color:"white",fontSize:"1.1rem",fontWeight:700}}>{target?.display_name}</p>
-          </div>
-          <div className="fadeUp1" style={{background:"white",borderRadius:20,padding:"24px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:20}}>
-            <h3 className="syne" style={{fontSize:"1.1rem",fontWeight:800,marginBottom:18}}>{cat?.label}</h3>
-            {isTarget ? (
-              <p style={{color:"#888",fontSize:"0.9rem"}}>This round is about you — sit tight while others guess!</p>
-            ) : session.round_revealed ? null : hasGuessed ? (
-              <p style={{color:"#16a34a",fontSize:"0.9rem",display:"flex",alignItems:"center",gap:8}}><Icons.check s={16} c="#16a34a"/>Guess submitted — waiting for others...</p>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                {roundOptions.map(opt => (
-                  <button key={opt} onClick={()=>submitGuess(opt)} style={{padding:"14px 18px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.1)",background:"white",color:"#0e0e0e",cursor:"pointer",fontSize:"0.92rem",fontWeight:500,textAlign:"left",transition:"all 0.2s"}} onMouseDown={e=>e.currentTarget.style.background="#f0efec"}>
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {session.round_revealed && revealInfo && (
-            <div className="popIn" style={{background:"#f0fff4",border:"1px solid #86efac",borderRadius:16,padding:"20px",marginBottom:20}}>
-              <p style={{fontWeight:700,marginBottom:10}}>{revealInfo.target?.display_name}'s answer: "{revealInfo.correctAnswer}"</p>
-              {revealInfo.guesses.map(g=>{
-                const guesser = players.find(p=>p.id===g.guesser_player_id);
-                return <p key={g.id} style={{fontSize:"0.85rem",color:g.is_correct?"#16a34a":"#991b1b",marginBottom:4}}>{guesser?.display_name}: "{g.guessed_value}" {g.is_correct?"✓ Correct! +1":"✗"}</p>;
-              })}
-            </div>
-          )}
-
-          {isHost && !isTarget && !session.round_revealed && (
-            <Btn onClick={revealRound} style={{width:"100%",padding:"15px"}}>Reveal answer</Btn>
-          )}
-          {isHost && session.round_revealed && (
-            <Btn onClick={nextRound} style={{width:"100%",padding:"15px"}}>Next round</Btn>
-          )}
-          {!isHost && (
-            <p style={{textAlign:"center",color:"#aaa",fontSize:"0.8rem",marginTop:10}}>The host controls when rounds advance.</p>
-          )}
-        </div>
+  // ── PLAYING (self-paced, everyone answers the same host-written questions) ─
+  const currentQ = myQuestions[qIndex];
+  if (phase==="playing" && currentQ) return (
+    <div style={{minHeight:"100vh",background:"#fafaf8"}}>
+      <div style={{padding:"16px 24px",borderBottom:"1px solid rgba(0,0,0,0.07)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <span className="syne" style={{fontWeight:800,fontSize:"1.05rem"}}>Question {qIndex+1}/{myQuestions.length}</span>
+        <span style={{background:"#0e0e0e",color:"white",padding:"6px 14px",borderRadius:50,fontSize:"0.83rem",fontWeight:600}}>Score: {myScore}</span>
       </div>
-    );
-  }
+      <div style={{height:4,background:"#f0efec"}}><div style={{height:"100%",width:`${(qIndex/myQuestions.length)*100}%`,background:"#ff5c3a",transition:"width 0.3s"}}/></div>
+      <div style={{maxWidth:480,margin:"0 auto",padding:"32px 24px"}}>
+        <div className="fadeUp" style={{background:"#0e0e0e",borderRadius:20,padding:"28px",marginBottom:24,textAlign:"center"}}>
+          <h3 className="syne" style={{fontSize:"1.15rem",fontWeight:800,color:"white",lineHeight:1.5}}>{currentQ.q}</h3>
+        </div>
+        {!showAnswer?(
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {currentQ.options.map((opt,oi) => (
+              <button key={oi} onClick={()=>submitAnswer(oi)} style={{padding:"16px 18px",borderRadius:14,border:"1.5px solid rgba(0,0,0,0.1)",background:"white",color:"#0e0e0e",cursor:"pointer",fontSize:"0.92rem",fontWeight:500,textAlign:"left",transition:"all 0.2s"}} onMouseDown={e=>e.currentTarget.style.background="#f0efec"}>
+                {opt}
+              </button>
+            ))}
+          </div>
+        ):(
+          <div className="popIn">
+            <div style={{padding:"20px",background:answered===currentQ.correctIndex?"#f0fff4":"#fff5f5",border:`1px solid ${answered===currentQ.correctIndex?"#86efac":"#fca5a5"}`,borderRadius:16,marginBottom:20,textAlign:"center"}}>
+              <p style={{fontWeight:700,marginBottom:6}}>{answered===currentQ.correctIndex?"Correct! +1 point":"Not quite!"}</p>
+              <p style={{fontSize:"0.83rem",color:"#555",lineHeight:1.6}}>Correct answer: {currentQ.options[currentQ.correctIndex]}</p>
+            </div>
+            <Btn onClick={nextQuestion} style={{width:"100%",padding:"15px"}}>{qIndex===myQuestions.length-1?"Finish":"Next question"}</Btn>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // ── WAITING for other players to finish ──────────────────────────────────
+  if (phase==="waiting-others") return (
+    <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+      <div style={{maxWidth:380}}>
+        <Icons.timer s={40} c="#0e0e0e"/>
+        <h2 className="syne" style={{fontSize:"1.4rem",fontWeight:800,marginTop:16,marginBottom:8}}>You're done! Score: {myScore}</h2>
+        <p style={{color:"#888",fontSize:"0.9rem",fontWeight:300}}>Waiting for the other players to finish...</p>
+      </div>
+    </div>
+  );
 
   // ── RESULT ─────────────────────────────────────────────────────────────
   const sorted = [...players].sort((a,b)=>(b.score||0)-(a.score||0));
@@ -2313,8 +2153,16 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
     if (sErr) { setError(sErr.message); setLoading(false); return; }
 
     if (mode==="stake") {
-      // Debit the host's own stake immediately, same as any other player joining
-      await supabase.from("wallets").update({ balance: walletBalance - Number(stakeAmount), updated_at:new Date().toISOString() }).eq("user_id", userId);
+      // Debit the host's own stake atomically — the database re-checks the real
+      // balance and rejects if insufficient, instead of trusting a possibly-stale
+      // client-side walletBalance value.
+      const { error: spendErr } = await supabase.rpc("spend_from_wallet", { p_user_id: userId, p_amount: Number(stakeAmount) });
+      if (spendErr) {
+        await supabase.from("game_sessions").delete().eq("id", newSession.id);
+        setLoading(false);
+        setError(spendErr.message?.includes("insufficient_funds") ? "Your wallet balance is lower than the stake amount." : "Couldn't process your stake — please try again.");
+        return;
+      }
       await supabase.from("transactions").insert({ user_id:userId, type:"stake_win", amount:Number(stakeAmount), currency:cur.code, status:"completed" });
     }
 
@@ -2335,7 +2183,12 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
     setError(""); setLoading(true);
 
     if (mode==="stake") {
-      await supabase.from("wallets").update({ balance: walletBalance - Number(session.stake_amount), updated_at:new Date().toISOString() }).eq("user_id", userId);
+      const { error: spendErr } = await supabase.rpc("spend_from_wallet", { p_user_id: userId, p_amount: Number(session.stake_amount) });
+      if (spendErr) {
+        setLoading(false);
+        setError(spendErr.message?.includes("insufficient_funds") ? `You need at least ${cur.symbol}${session.stake_amount} in your wallet to join.` : "Couldn't process your stake — please try again.");
+        return;
+      }
       await supabase.from("transactions").insert({ user_id:userId, type:"stake_win", amount:Number(session.stake_amount), currency:session.currency, status:"completed" });
     }
 
@@ -2390,8 +2243,7 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
       const share = pot / tied.length;
       for (const winner of tied) {
         if (winner.user_id) {
-          const { data: w } = await supabase.from("wallets").select("balance").eq("user_id", winner.user_id).single();
-          if (w) await supabase.from("wallets").update({ balance: Number(w.balance)+share, updated_at:new Date().toISOString() }).eq("user_id", winner.user_id);
+          await supabase.rpc("add_to_wallet", { p_user_id: winner.user_id, p_amount: share });
           await supabase.from("transactions").insert({ user_id:winner.user_id, type:"stake_win_payout", amount:share, currency:session.currency, status:"completed" });
         }
       }
@@ -2738,7 +2590,7 @@ const Customization = ({ goTo, customization, setCustomization }) => {
         <div style={{marginBottom:28}}>
           <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Preview</label>
           <div style={{background:local.bgColor||theme.bg,borderRadius:16,padding:"24px",border:"1px solid rgba(0,0,0,0.08)",textAlign:"center"}}>
-            <div style={{width:48,height:48,borderRadius:"50%",background:theme.accent,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><Icons.mask size={24} color="white"/></div>
+            <div style={{width:48,height:48,borderRadius:"50%",background:theme.accent,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><LogoMask size={24} variant="white"/></div>
             <p className="syne" style={{fontWeight:800,fontSize:"1rem"}}>@yourname</p>
             <p style={{fontSize:"0.8rem",color:"#888",marginTop:4}}>Send me an anonymous message</p>
           </div>
@@ -2905,7 +2757,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
 
   if(sec==="photo") return (
     <SubPage title="Profile Picture">
-      <div style={{width:100,height:100,borderRadius:"50%",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 24px"}}><Icons.mask size={50} color="white"/></div>
+      <div style={{width:100,height:100,borderRadius:"50%",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 24px"}}><LogoMask size={50} variant="white"/></div>
       <div style={{background:"#f3f2ef",borderRadius:16,padding:"24px",marginBottom:16,cursor:"pointer",border:"2px dashed #ccc",textAlign:"center"}}>
         <div style={{display:"flex",justifyContent:"center",marginBottom:8}}><Icons.photo s={32} c="#aaa"/></div>
         <p style={{fontWeight:600,marginBottom:4}}>Upload a photo</p>
@@ -3032,7 +2884,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
       <AppNav goTo={goTo} active="settings"/>
       <div style={{maxWidth:600,margin:"0 auto",padding:"32px 20px"}}>
         <div className="fadeUp" style={{display:"flex",alignItems:"center",gap:16,marginBottom:20}}>
-          <div style={{width:64,height:64,borderRadius:"50%",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center"}}><Icons.mask size={32} color="white"/></div>
+          <div style={{width:64,height:64,borderRadius:"50%",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center"}}><LogoMask size={32} variant="white"/></div>
           <div><h2 className="syne" style={{fontSize:"1.3rem",fontWeight:800}}>{profile?.name||"Your Name"}</h2><p style={{color:"#888",fontSize:"0.88rem"}}>{window.location.host}/{profile?.username||"yourname"}</p></div>
         </div>
 
@@ -3184,6 +3036,18 @@ export default function App() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  // Presence: mark this tab as "online" on a shared channel while the app is
+  // open, so the admin dashboard can show a real active-users count instead
+  // of a hardcoded number. Works for logged-in users and anonymous visitors.
+  useEffect(() => {
+    const presenceKey = session?.user?.id || getGuestToken();
+    const channel = supabase.channel("online-users", { config: { presence: { key: presenceKey } } });
+    channel.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") await channel.track({ online_at: new Date().toISOString() });
+    });
+    return () => { supabase.removeChannel(channel); };
+  }, [session?.user?.id]);
+
   // Applies immediately after signup so currency/age-gating don't wait on the
   // profile re-fetch — real profile data arrives right after via onAuthStateChange.
   const onSignupComplete = (form) => {
@@ -3200,7 +3064,7 @@ export default function App() {
     <>
       <GlobalStyles/>
       <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center"}}>
-        <Icons.mask size={40} color="#ccc"/>
+        <LogoMask size={40}/>
       </div>
     </>
   );
@@ -3226,7 +3090,7 @@ export default function App() {
       <GlobalStyles/>
       <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
         <div style={{maxWidth:380}}>
-          <Icons.mask size={48}/>
+          <LogoMask size={48}/>
           <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginTop:20,marginBottom:12}}>Down for maintenance</h2>
           <p style={{color:"#888",fontSize:"0.9rem",lineHeight:1.7,fontWeight:300}}>We're making some improvements. Please check back shortly.</p>
         </div>
