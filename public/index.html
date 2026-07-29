@@ -6,6 +6,25 @@
     <meta name="theme-color" content="#0e0e0e" />
     <meta name="description" content="Unmaskr — anonymous messages, reimagined" />
     <title>unmaskr</title>
+    <script>
+      // Safety net: if something goes wrong before React even mounts (a
+      // script fails to load, a syntax error, etc.), show the real error as
+      // text instead of leaving a blank screen with no clue what happened.
+      window.addEventListener('error', function (e) {
+        var root = document.getElementById('root');
+        if (root && !root.hasChildNodes()) {
+          root.innerHTML = '<div style="font-family:monospace;padding:24px;color:#ef4444;background:#fff;white-space:pre-wrap;font-size:13px;">Something failed to load:\n\n' +
+            (e.message || 'Unknown error') + '\n' + (e.filename ? (e.filename + ':' + e.lineno) : '') + '</div>';
+        }
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        var root = document.getElementById('root');
+        if (root && !root.hasChildNodes()) {
+          root.innerHTML = '<div style="font-family:monospace;padding:24px;color:#ef4444;background:#fff;white-space:pre-wrap;font-size:13px;">Something failed to load:\n\n' +
+            (e.reason && e.reason.message ? e.reason.message : String(e.reason)) + '</div>';
+        }
+      });
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
