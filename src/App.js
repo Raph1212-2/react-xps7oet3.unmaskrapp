@@ -3025,7 +3025,17 @@ export default function App() {
   useEffect(() => {
     fetchPlatformSettings();
 
+    // Safety timeout: some mobile networks can leave this request hanging
+    // indefinitely instead of erroring out. Don't let the whole app get stuck
+    // on the loading screen forever waiting for it — move on after 6 seconds
+    // regardless. Worst case, the user just has to log in again.
+    let settled = false;
+    const timeout = setTimeout(() => { if (!settled) { settled = true; setCheckingSession(false); } }, 6000);
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (settled) return; // timeout already fired, don't override later
+      settled = true;
+      clearTimeout(timeout);
       setSession(session);
       if (session?.user) {
         fetchProfile(session.user.id);
@@ -3033,6 +3043,11 @@ export default function App() {
         // someone with an account clicking a friend's link should still see it.
         setScreen(s => (s==="landing") ? "inbox" : s);
       }
+      setCheckingSession(false);
+    }).catch(() => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       setCheckingSession(false);
     });
 
@@ -3042,7 +3057,7 @@ export default function App() {
       else setProfile(null);
     });
 
-    return () => listener.subscription.unsubscribe();
+    return () => { clearTimeout(timeout); listener.subscription.unsubscribe(); };
   }, []);
 
   // Presence: mark this tab as "online" on a shared channel while the app is
@@ -3079,8 +3094,10 @@ export default function App() {
   if (checkingSession) return (
     <>
       <GlobalStyles/>
-      <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center"}}>
-        <LogoMask size={40}/>
+      <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14}}>
+        <div style={{animation:"pulse 1.4s ease-in-out infinite"}}><LogoMask size={40}/></div>
+        <p style={{fontSize:"0.8rem",color:"#aaa"}}>Loading...</p>
+        <style>{`@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}`}</style>
       </div>
     </>
   );
