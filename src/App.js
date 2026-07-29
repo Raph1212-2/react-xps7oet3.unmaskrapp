@@ -1641,9 +1641,16 @@ const shuffleArr = (arr) => [...arr].sort(()=>Math.random()-0.5);
 const makeLobbyCode = () => "UNMSK-" + Math.floor(1000 + Math.random()*9000);
 
 const getGuestToken = () => {
-  let token = localStorage.getItem("unmaskr_guest_token");
-  if (!token) { token = "guest-" + Math.random().toString(36).slice(2) + Date.now(); localStorage.setItem("unmaskr_guest_token", token); }
-  return token;
+  try {
+    let token = localStorage.getItem("unmaskr_guest_token");
+    if (!token) { token = "guest-" + Math.random().toString(36).slice(2) + Date.now(); localStorage.setItem("unmaskr_guest_token", token); }
+    return token;
+  } catch (e) {
+    // Some mobile/in-app browsers (private mode, embedded WhatsApp/Instagram
+    // browsers, etc.) block storage entirely and throw here. Fall back to a
+    // token that just lives for this page load instead of crashing the app.
+    return "guest-" + Math.random().toString(36).slice(2) + Date.now();
+  }
 };
 
 const EMPTY_QUESTION_DRAFT = { q:"", options:["","","",""], correctIndex:0 };
@@ -3041,13 +3048,20 @@ export default function App() {
   // Presence: mark this tab as "online" on a shared channel while the app is
   // open, so the admin dashboard can show a real active-users count instead
   // of a hardcoded number. Works for logged-in users and anonymous visitors.
+  // This is a "nice to have" feature — wrapped so it can never take the rest
+  // of the app down if a browser blocks storage or the realtime connection.
   useEffect(() => {
-    const presenceKey = session?.user?.id || getGuestToken();
-    const channel = supabase.channel("online-users", { config: { presence: { key: presenceKey } } });
-    channel.subscribe(async (status) => {
-      if (status === "SUBSCRIBED") await channel.track({ online_at: new Date().toISOString() });
-    });
-    return () => { supabase.removeChannel(channel); };
+    let channel;
+    try {
+      const presenceKey = session?.user?.id || getGuestToken();
+      channel = supabase.channel("online-users", { config: { presence: { key: presenceKey } } });
+      channel.subscribe(async (status) => {
+        try {
+          if (status === "SUBSCRIBED") await channel.track({ online_at: new Date().toISOString() });
+        } catch (e) { /* non-critical, ignore */ }
+      });
+    } catch (e) { /* non-critical, ignore */ }
+    return () => { if (channel) supabase.removeChannel(channel); };
   }, [session?.user?.id]);
 
   // Applies immediately after signup so currency/age-gating don't wait on the
