@@ -320,11 +320,26 @@ const ShareModal = ({ message, ownerName, onClose }) => {
     setGenerating(true);
     setShareError("");
     try {
-      // Wait for the custom fonts (Syne / DM Sans) to actually finish loading
-      // before capturing — otherwise html2canvas can measure/render text with
-      // a fallback system font, which is wider and causes text to overflow
-      // its container in the captured image.
-      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      // Waiting for document.fonts.ready alone isn't quite enough — it can
+      // resolve slightly before the browser has actually finished painting
+      // with the new fonts, which is what caused the leftover glitches.
+      // Belt and suspenders: explicitly request every font weight this card
+      // actually uses, wait for the ready promise, then wait two real paint
+      // frames so the browser has definitely rendered with them applied
+      // before html2canvas reads anything.
+      if (document.fonts) {
+        try {
+          await Promise.all([
+            document.fonts.load("700 1em Syne"),
+            document.fonts.load("800 1em Syne"),
+            document.fonts.load("600 1em 'DM Sans'"),
+            document.fonts.load("700 1em 'DM Sans'"),
+          ]);
+        } catch (e) { /* if a specific weight fails to preload, fonts.ready below still catches the rest */ }
+        if (document.fonts.ready) await document.fonts.ready;
+      }
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
       const canvas = await html2canvas(cardRef.current, { backgroundColor:null, scale:3 });
       const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
       const file = new File([blob], "unmaskr-message.png", { type:"image/png" });
@@ -361,11 +376,10 @@ const ShareModal = ({ message, ownerName, onClose }) => {
         <div style={{position:"relative",zIndex:1}}>
           <div style={{display:"inline-flex",alignItems:"center",gap:7,background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.22)",borderRadius:50,padding:"7px 16px",marginBottom:22}}>
             <LogoMask size={14} variant="white"/>
-            <span style={{color:"white",fontSize:"0.68rem",fontWeight:700,letterSpacing:"0.09em",textTransform:"uppercase",whiteSpace:"nowrap"}}>Anonymous message</span>
+            <span style={{color:"white",fontSize:"0.68rem",fontWeight:700,whiteSpace:"nowrap"}}>ANONYMOUS MESSAGE</span>
           </div>
-          <div style={{background:"white",borderRadius:18,padding:"28px 22px 24px",marginBottom:26,position:"relative",boxShadow:"0 14px 40px rgba(0,0,0,0.35)"}}>
-            <p style={{position:"absolute",top:2,left:16,fontSize:"2.8rem",color:"rgba(255,92,58,0.2)",fontFamily:"Georgia,serif",lineHeight:1}}>"</p>
-            <p style={{color:"#0e0e0e",fontSize:"1.05rem",lineHeight:1.65,fontWeight:600,position:"relative"}}>{message}</p>
+          <div style={{background:"white",borderRadius:18,padding:"26px 22px",marginBottom:26,boxShadow:"0 14px 40px rgba(0,0,0,0.35)"}}>
+            <p style={{color:"#0e0e0e",fontSize:"1.05rem",lineHeight:1.65,fontWeight:600}}>{message}</p>
           </div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
             <LogoMask size={22} variant="white"/>
@@ -535,6 +549,13 @@ const Signup = ({ goTo, onSignupComplete, signupsDisabled }) => {
   const [otpError, setOtpError] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [resendMsg, setResendMsg] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown(s => (s<=1 ? 0 : s-1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown > 0]);
 
   const saveProfileAndWallet = async (userId) => {
     const { error: profileError } = await supabase
@@ -582,6 +603,7 @@ const Signup = ({ goTo, onSignupComplete, signupsDisabled }) => {
       // Save it after verifyCode succeeds instead.
       setLoading(false);
       setNeedsConfirmation(true);
+      setResendCooldown(90);
     }
   };
 
@@ -604,7 +626,9 @@ const Signup = ({ goTo, onSignupComplete, signupsDisabled }) => {
   };
 
   const resendCode = async () => {
+    if (resendCooldown > 0) return; // extra guard against rapid clicks/scripts, on top of the visible cooldown
     setResendMsg("");
+    setResendCooldown(90);
     const { error } = await supabase.auth.resend({ type: "signup", email: form.email });
     setResendMsg(error ? "Couldn't resend — try again shortly." : "New code sent!");
   };
@@ -618,7 +642,7 @@ const Signup = ({ goTo, onSignupComplete, signupsDisabled }) => {
         <Inp placeholder="Enter 6-digit code" value={otpCode} onChange={e=>setOtpCode(e.target.value)}/>
         {otpError && <p style={{color:"#ef4444",fontSize:"0.82rem",marginTop:10}}>{otpError}</p>}
         <Btn onClick={verifyCode} style={{width:"100%",marginTop:16}} disabled={!otpCode.trim()||verifying}>{verifying?"Verifying...":"Verify & continue"}</Btn>
-        <p style={{textAlign:"center",marginTop:14,fontSize:"0.85rem",color:"#aaa"}}>Didn't get it? <span style={{color:"#ff5c3a",cursor:"pointer"}} onClick={resendCode}>Resend</span></p>
+        <p style={{textAlign:"center",marginTop:14,fontSize:"0.85rem",color:"#aaa"}}>Didn't get it? {resendCooldown>0 ? <span style={{color:"#ccc"}}>Resend in {String(Math.floor(resendCooldown/60)).padStart(1,"0")}:{String(resendCooldown%60).padStart(2,"0")}</span> : <span style={{color:"#ff5c3a",cursor:"pointer"}} onClick={resendCode}>Resend</span>}</p>
         {resendMsg && <p style={{fontSize:"0.78rem",color:"#888",marginTop:6}}>{resendMsg}</p>}
       </div>
     </div>
@@ -777,12 +801,21 @@ const ForgotPassword = ({ goTo }) => {
   const [confirmPass,setConfirmPass] = useState("");
   const [err,setErr] = useState("");
   const [loading,setLoading] = useState(false);
+  const [resendCooldown,setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown(s => (s<=1 ? 0 : s-1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown > 0]);
 
   const sendReset = async () => {
+    if (resendCooldown > 0) return;
     setLoading(true); setErr("");
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     setLoading(false);
     if (error) { setErr(error.message); return; }
+    setResendCooldown(90);
     setStep(2);
   };
 
@@ -820,7 +853,7 @@ const ForgotPassword = ({ goTo }) => {
             <Inp placeholder="Enter 6-digit code" value={code} onChange={e=>setCode(e.target.value)}/>
             {err && <p style={{color:"#ef4444",fontSize:"0.82rem",marginTop:10}}>{err}</p>}
             <Btn onClick={verifyCode} style={{width:"100%",marginTop:16,padding:"15px"}} disabled={code.length<4||loading}>{loading?"Verifying...":"Verify code"}</Btn>
-            <p style={{textAlign:"center",marginTop:14,fontSize:"0.85rem",color:"#aaa"}}>Didn't get it? <span style={{color:"#ff5c3a",cursor:"pointer"}} onClick={sendReset}>Resend</span></p></>}
+            <p style={{textAlign:"center",marginTop:14,fontSize:"0.85rem",color:"#aaa"}}>Didn't get it? {resendCooldown>0 ? <span style={{color:"#ccc"}}>Resend in {String(Math.floor(resendCooldown/60)).padStart(1,"0")}:{String(resendCooldown%60).padStart(2,"0")}</span> : <span style={{color:"#ff5c3a",cursor:"pointer"}} onClick={sendReset}>Resend</span>}</p></>}
           {step===3 && <><div style={{width:52,height:52,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}><Icons.unlock s={24} c="#0e0e0e"/></div>
             <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginBottom:8}}>New password</h2>
             <p style={{color:"#888",fontSize:"0.9rem",marginBottom:28,fontWeight:300}}>Choose a strong new password.</p>
