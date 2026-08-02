@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from './supabaseClient';
-import html2canvas from 'html2canvas';
 // Logo images embedded directly as base64 text — no separate image files or
 // uploads needed, just paste this whole file into Stackblitz as-is.
 const logoMaskBlack = "data:image/png;base64,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";
@@ -315,33 +314,186 @@ const ShareModal = ({ message, ownerName, onClose }) => {
   const toTW = () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`,"_blank");
   const copyTxt = () => {navigator.clipboard?.writeText(shareText);setCopied(true);setTimeout(()=>setCopied(false),2000);};
 
+  // Draws the share card by hand, one instruction at a time — background,
+  // shapes, icon, then text — instead of asking a library to look at the
+  // page and recreate it. There is no "guessing" step here: whatever font,
+  // size, and position I tell the canvas to use is exactly what gets drawn,
+  // every single time. This is the actual fix for the text glitches, not
+  // just a better version of the same kind of fix.
+  const wrapText = (ctx, text, maxWidth) => {
+    const words = text.split(/\s+/);
+    const lines = [];
+    let line = "";
+    words.forEach(word => {
+      const test = line ? line + " " + word : word;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    });
+    if (line) lines.push(line);
+    return lines;
+  };
+
+  const roundRectPath = (ctx, x, y, w, h, r) => {
+    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
+    // Manual fallback for older browsers without native roundRect support
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  };
+
+  const loadImage = (src) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+
+  const generateCardBlob = async () => {
+    if (document.fonts) {
+      try {
+        await Promise.all([
+          document.fonts.load("700 16px 'DM Sans'"),
+          document.fonts.load("800 16px 'DM Sans'"),
+          document.fonts.load("600 16px 'DM Sans'"),
+        ]);
+      } catch (e) { /* fonts.ready below still catches the rest */ }
+      if (document.fonts.ready) await document.fonts.ready;
+    }
+
+    const maskImg = await loadImage(logoMaskWhite);
+
+    const SCALE = 3;      // output resolution multiplier (retina-quality)
+    const W = 480;        // card width, in design pixels
+    const PAD_X = 24, PAD_Y = 34;
+    const bubbleX = PAD_X, bubbleW = W - PAD_X*2;
+    const bubblePadX = 22, bubblePadY = 26;
+
+    // First pass on a throwaway context: measure how tall the message will
+    // wrap to, so we know the full card height before drawing anything for real.
+    const measureCanvas = document.createElement("canvas");
+    const mctx = measureCanvas.getContext("2d");
+    mctx.font = "600 17px 'DM Sans'";
+    const msgLines = wrapText(mctx, message, bubbleW - bubblePadX*2);
+    const lineHeight = 17 * 1.65;
+    const bubbleH = bubblePadY*2 + msgLines.length * lineHeight;
+
+    const badgeH = 30, badgeMarginBottom = 22;
+    const bubbleMarginBottom = 26;
+    const bottomRowH = 44;
+    const H = PAD_Y + badgeH + badgeMarginBottom + bubbleH + bubbleMarginBottom + bottomRowH + PAD_Y;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = W * SCALE;
+    canvas.height = H * SCALE;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(SCALE, SCALE);
+
+    // Card background + rounded outer edge (everything else clips to this)
+    roundRectPath(ctx, 0, 0, W, H, 22);
+    ctx.clip();
+    const bg = ctx.createLinearGradient(0, 0, W*0.6, H);
+    bg.addColorStop(0, "#1a0b2e");
+    bg.addColorStop(0.42, "#0e0e0e");
+    bg.addColorStop(1, "#2d0a1f");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Decorative glow blobs
+    const blob = (cx, cy, r, color) => {
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, color);
+      g.addColorStop(1, color.replace(/[\d.]+\)$/, "0)"));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+    };
+    blob(-46+75, -46+75, 75, "rgba(255,92,58,0.55)");
+    blob(W+36-85, H+56-85, 85, "rgba(124,58,237,0.5)");
+    blob(W+24-50, H*0.38, 50, "rgba(236,72,153,0.45)");
+
+    // Badge pill
+    let y = PAD_Y;
+    ctx.font = "700 11px 'DM Sans'";
+    const badgeText = "ANONYMOUS MESSAGE";
+    const badgeTextW = ctx.measureText(badgeText).width;
+    const badgeIconSize = 14, badgeGap = 7, badgePadX = 16;
+    const badgeW = badgePadX*2 + badgeIconSize + badgeGap + badgeTextW;
+    roundRectPath(ctx, PAD_X, y, badgeW, badgeH, 50);
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.22)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.drawImage(maskImg, PAD_X + badgePadX, y + (badgeH-badgeIconSize)/2, badgeIconSize, badgeIconSize);
+    ctx.fillStyle = "white";
+    ctx.textBaseline = "middle";
+    ctx.fillText(badgeText, PAD_X + badgePadX + badgeIconSize + badgeGap, y + badgeH/2 + 1);
+
+    // White message bubble
+    y += badgeH + badgeMarginBottom;
+    roundRectPath(ctx, bubbleX, y, bubbleW, bubbleH, 18);
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.35)";
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetY = 14;
+    ctx.fillStyle = "white";
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = "#0e0e0e";
+    ctx.font = "600 17px 'DM Sans'";
+    ctx.textBaseline = "alphabetic";
+    msgLines.forEach((line, i) => {
+      const lineW = ctx.measureText(line).width;
+      ctx.fillText(line, bubbleX + (bubbleW - lineW)/2, y + bubblePadY + 17*0.8 + i*lineHeight);
+    });
+
+    // Bottom row: mask icon + "Send me one too" + link
+    y += bubbleH + bubbleMarginBottom;
+    const bottomIconSize = 22;
+    ctx.drawImage(maskImg, PAD_X, y + (bottomRowH-bottomIconSize)/2 - 6, bottomIconSize, bottomIconSize);
+    const textX = PAD_X + bottomIconSize + 10;
+    ctx.fillStyle = "white";
+    ctx.font = "800 14px 'DM Sans'";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText("Send me one too", textX, y + 16);
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.font = "400 12px 'DM Sans'";
+    ctx.fillText(`${window.location.host}/${ownerName||"yourname"}`, textX, y + 34);
+
+    return new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+  };
+
+  const saveImage = async () => {
+    if (!cardRef.current) return;
+    setGenerating(true);
+    setShareError("");
+    try {
+      const blob = await generateCardBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "unmaskr-message.png";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setShareError("Saved! Now open WhatsApp (or wherever) and attach it from your photos — that route always comes out looking right.");
+    } catch (err) {
+      setShareError("Couldn't generate the image — try again.");
+    }
+    setGenerating(false);
+  };
+
   const shareAsImage = async () => {
     if (!cardRef.current) return;
     setGenerating(true);
     setShareError("");
     try {
-      // Waiting for document.fonts.ready alone isn't quite enough — it can
-      // resolve slightly before the browser has actually finished painting
-      // with the new fonts, which is what caused the leftover glitches.
-      // Belt and suspenders: explicitly request every font weight this card
-      // actually uses, wait for the ready promise, then wait two real paint
-      // frames so the browser has definitely rendered with them applied
-      // before html2canvas reads anything.
-      if (document.fonts) {
-        try {
-          await Promise.all([
-            document.fonts.load("700 1em Syne"),
-            document.fonts.load("800 1em Syne"),
-            document.fonts.load("600 1em 'DM Sans'"),
-            document.fonts.load("700 1em 'DM Sans'"),
-          ]);
-        } catch (e) { /* if a specific weight fails to preload, fonts.ready below still catches the rest */ }
-        if (document.fonts.ready) await document.fonts.ready;
-      }
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
-      const canvas = await html2canvas(cardRef.current, { backgroundColor:null, scale:3 });
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+      const blob = await generateCardBlob();
       const file = new File([blob], "unmaskr-message.png", { type:"image/png" });
 
       if (navigator.canShare && navigator.canShare({ files:[file] })) {
@@ -391,10 +543,13 @@ const ShareModal = ({ message, ownerName, onClose }) => {
         </div>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        <button onClick={shareAsImage} disabled={generating} style={{padding:"14px",borderRadius:12,border:"none",background:"#ff5c3a",color:"white",fontWeight:700,cursor:generating?"default":"pointer",fontSize:"0.92rem",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:generating?0.7:1}}>
-          <Icons.photo s={16} c="white"/> {generating?"Preparing image...":"Share as image"}
+        <button onClick={saveImage} disabled={generating} style={{padding:"14px",borderRadius:12,border:"none",background:"#ff5c3a",color:"white",fontWeight:700,cursor:generating?"default":"pointer",fontSize:"0.92rem",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:generating?0.7:1}}>
+          <Icons.photo s={16} c="white"/> {generating?"Preparing image...":"Save image"}
         </button>
-        {shareError && <p style={{fontSize:"0.78rem",color:shareError.includes("saved")?"#16a34a":"#ef4444",textAlign:"center"}}>{shareError}</p>}
+        {shareError && <p style={{fontSize:"0.78rem",color:shareError.includes("Saved")||shareError.includes("saved")?"#16a34a":"#ef4444",textAlign:"center"}}>{shareError}</p>}
+        <button onClick={shareAsImage} disabled={generating} style={{padding:"13px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.1)",background:"white",color:"#0e0e0e",fontWeight:500,cursor:generating?"default":"pointer",fontSize:"0.87rem",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:generating?0.6:1}}>
+          <Icons.share s={15} c="#555"/> Share directly instead
+        </button>
         <button onClick={toWA} style={{padding:"13px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.1)",background:"white",color:"#0e0e0e",fontWeight:500,cursor:"pointer",fontSize:"0.87rem",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           <Icons.share s={15} c="#555"/> Share as text instead
         </button>
@@ -402,7 +557,7 @@ const ShareModal = ({ message, ownerName, onClose }) => {
           <Icons.copy s={15} c="#555"/> {copied?"Copied!":"Copy text"}
         </button>
       </div>
-      <p style={{textAlign:"center",marginTop:14,fontSize:"0.75rem",color:"#ccc"}}>"Share as image" opens your phone's share menu — pick WhatsApp, Instagram, or wherever you like.</p>
+      <p style={{textAlign:"center",marginTop:14,fontSize:"0.75rem",color:"#ccc"}}>"Save image" always comes out looking right. "Share directly" is faster, but some apps crop their own preview a bit oddly.</p>
     </Modal>
   );
 };
