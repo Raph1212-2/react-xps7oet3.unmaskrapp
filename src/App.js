@@ -82,7 +82,7 @@ const Icons = {
 
 const GlobalStyles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
     *{box-sizing:border-box;margin:0;padding:0;font-family:'DM Sans',sans-serif;}
     body{overflow-x:hidden;background:#fafaf8;}
     .syne{font-family:'Syne',sans-serif!important;}
