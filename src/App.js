@@ -248,7 +248,6 @@ const AppNav = ({ goTo, active, userId }) => (
       <LogoFull height={26}/>
     </div>
     <div style={{display:"flex",gap:4,alignItems:"center"}}>
-      <NotificationBell userId={userId} goTo={goTo}/>
       {[
         {k:"inbox",I:Icons.inbox,label:"Inbox"},
         {k:"stats",I:Icons.stats,label:"Stats"},
@@ -256,9 +255,12 @@ const AppNav = ({ goTo, active, userId }) => (
         {k:"games",I:Icons.games,label:"Games"},
         {k:"settings",I:Icons.settings,label:"Settings"},
       ].map(({k,I,label})=>(
-        <button key={k} className="tab-btn" onClick={()=>goTo(k)} title={label} style={{padding:"8px",borderRadius:10,border:"none",background:active===k?"#0e0e0e":"transparent",color:active===k?"white":"#555",cursor:"pointer",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <I s={20} c={active===k?"white":"#555"}/>
-        </button>
+        <React.Fragment key={k}>
+          {k==="settings" && <NotificationBell userId={userId} goTo={goTo}/>}
+          <button className="tab-btn" onClick={()=>goTo(k)} title={label} style={{padding:"8px",borderRadius:10,border:"none",background:active===k?"#0e0e0e":"transparent",color:active===k?"white":"#555",cursor:"pointer",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <I s={20} c={active===k?"white":"#555"}/>
+          </button>
+        </React.Fragment>
       ))}
     </div>
   </nav>
