@@ -166,6 +166,7 @@ const NOTIF_ICONS = {
   deposit: Icons.deposit,
   withdrawal: Icons.withdraw,
   complaint: Icons.chat,
+  broadcast: Icons.bell,
 };
 
 const NotificationBell = ({ userId, goTo }) => {
