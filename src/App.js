@@ -1435,6 +1435,7 @@ const SendPage = ({ goTo, params, customization, receiverCurrency }) => {
   const [msg,setMsg] = useState("");
   const [gender,setGender] = useState("");
   const [birthMonth,setBirthMonth] = useState("");
+  const [age,setAge] = useState("");
   const [senderEmail,setSenderEmail] = useState("");
   const [sent,setSent] = useState(false);
   const [termsAccepted,setTermsAccepted] = useState(false);
@@ -1453,6 +1454,7 @@ const SendPage = ({ goTo, params, customization, receiverCurrency }) => {
         sender_email: senderEmail || null,
         sender_gender: gender || null,
         sender_birth_period: birthMonth || null,
+        sender_age: age ? Number(age) : null,
       });
     }
     setSent(true);
@@ -1502,6 +1504,11 @@ const SendPage = ({ goTo, params, customization, receiverCurrency }) => {
             <select value={birthMonth} onChange={e=>setBirthMonth(e.target.value)} style={{width:"100%",padding:"12px 16px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.1)",background:"white",fontSize:"0.9rem",cursor:"pointer"}}>
               <option value="">Select birth month</option>{months.map(m=><option key={m} value={m}>{m}</option>)}
             </select>
+          </div>
+
+          <div style={{marginTop:16}}>
+            <label style={{fontSize:"0.8rem",fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",color:"#aaa",display:"block",marginBottom:10}}>Your age <span style={{fontWeight:300,textTransform:"none",letterSpacing:0}}>(optional)</span></label>
+            <input type="number" inputMode="numeric" min="1" max="120" placeholder="e.g. 24" value={age} onChange={e=>setAge(e.target.value.slice(0,3))} style={{width:"100%",padding:"14px 18px",borderRadius:14,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"0.95rem"}}/>
           </div>
 
           <div style={{marginTop:16}}>
