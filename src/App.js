@@ -298,12 +298,45 @@ const COUNTRIES = [
 // Each hint only ever costs money when the sender actually supplied that piece
 // of data. "unspecified" is what the recipient sees for free when the sender
 // left it blank — no wallet debit, no transaction, ever, for that reveal.
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+// Fuzzy-but-truthful hint generators — each always contains the real value
+// somewhere in the range/clue, but never states it outright.
+const monthRangeHint = (monthName) => {
+  const idx = MONTH_NAMES.indexOf(monthName);
+  if (idx === -1) return `This person may be born around ${monthName}.`;
+  const startOffset = [-2,-1,0][Math.floor(Math.random()*3)]; // true month lands at the start, middle, or end of the window
+  const startIdx = (idx + startOffset + 12) % 12;
+  const endIdx = (startIdx + 2) % 12;
+  return `This person may be born between ${MONTH_NAMES[startIdx]} and ${MONTH_NAMES[endIdx]}.`;
+};
+const ageRangeHint = (ageVal) => {
+  const age = Number(ageVal);
+  if (!age) return `This person may be around ${ageVal} years old.`;
+  const span = 2 + Math.floor(Math.random()*3); // 2-4 year window
+  const offset = Math.floor(Math.random()*(span+1)); // true age sits somewhere inside the window
+  const start = Math.max(1, age - offset);
+  return `This person may be between ${start} and ${start+span} years old.`;
+};
+const nameLetterHint = (name) => {
+  const clean = (name||"").trim();
+  if (!clean) return "The sender didn't specify their name.";
+  const letters = [...new Set(clean.replace(/[^a-zA-Z]/g,"").toUpperCase().split(""))];
+  const options = [
+    () => `This person's name starts with the letter "${clean[0].toUpperCase()}".`,
+    () => `This person's name ends with the letter "${clean[clean.length-1].toUpperCase()}".`,
+    () => letters.length ? `This person's name contains the letter "${letters[Math.floor(Math.random()*letters.length)]}".` : `This person's name starts with the letter "${clean[0].toUpperCase()}".`,
+  ];
+  return options[Math.floor(Math.random()*options.length)]();
+};
+
 const ALL_HINTS = [
   {key:"gender",label:"Gender Hint",result:g=>`This sender may identify as ${g}.`,unspecified:"The sender didn't specify their gender."},
-  {key:"birth",label:"Birth Period Hint",result:m=>`This person may be born around ${m}.`,unspecified:"The sender didn't specify their birth month."},
+  {key:"birth",label:"Birth Period Hint",result:monthRangeHint,unspecified:"The sender didn't specify their birth month."},
+  {key:"name",label:"Name Hint",result:nameLetterHint,unspecified:"The sender didn't specify their name."},
   {key:"relationship",label:"Relationship Hint",result:()=>"This person may be someone you know personally.",unspecified:"The sender didn't specify this."},
   {key:"circle",label:"Circle Hint",result:()=>"This person may be in your close circle.",unspecified:"The sender didn't specify this."},
-  {key:"age",label:"Age Hint",result:a=>`This person may be around ${a} years old.`,unspecified:"The sender didn't specify their age."},
+  {key:"age",label:"Age Hint",result:ageRangeHint,unspecified:"The sender didn't specify their age."},
   {key:"location",label:"Location Hint",result:()=>"This person may live close to you.",unspecified:"The sender didn't specify this."},
   {key:"frequency",label:"Frequency Hint",result:()=>"This person may have messaged you before.",unspecified:"The sender didn't specify this."},
 ];
@@ -1147,9 +1180,10 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
           time: new Date(m.created_at).toLocaleString(),
           read: m.read,
           hints: m.hints_unlocked || [],
+          hintTexts: m.hint_texts || {},
           reactions: m.reactions || [],
           replies: (m.message_replies||[]).map(r=>r.text),
-          sd: { gender: m.sender_gender, birth: m.sender_birth_period, age: m.sender_age },
+          sd: { gender: m.sender_gender, birth: m.sender_birth_period, age: m.sender_age, name: m.sender_name },
           senderEmail: m.sender_email || "",
         })));
         setLoadingMsgs(false);
@@ -1241,11 +1275,16 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
       return;
     }
 
-    // 4. Mark the hint unlocked on the message
-    await supabase.from("messages").update({ hints_unlocked: updated }).eq("id", activeMsg.id);
+    // 4. Mark the hint unlocked, and lock in the generated hint text itself —
+    // several hints are randomized (a range, one of a few clue phrasings), so
+    // this is computed once, here, and stored rather than recomputed on every
+    // render (which would make the reveal drift each time the message is reopened).
+    const revealText = h.result(activeMsg.sd[h.key]);
+    const updatedTexts = { ...activeMsg.hintTexts, [h.key]: revealText };
+    await supabase.from("messages").update({ hints_unlocked: updated, hint_texts: updatedTexts }).eq("id", activeMsg.id);
 
-    setActiveMsg(m=>({...m,hints:updated}));
-    setMessages(ms=>ms.map(m=>m.id===activeMsg.id?{...m,hints:updated}:m));
+    setActiveMsg(m=>({...m,hints:updated,hintTexts:updatedTexts}));
+    setMessages(ms=>ms.map(m=>m.id===activeMsg.id?{...m,hints:updated,hintTexts:updatedTexts}:m));
     setActiveHints(getRandHints(updated));
     setReceipt({label:h.label, price:`${cur.symbol}${price}`, senderShare:`${cur.symbol}${(price*0.5).toFixed(2)}`, platformFee:`${cur.symbol}${(price*0.5).toFixed(2)}`});
     setUnlocking(false);
@@ -1364,7 +1403,7 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
                 const specified = isHintSpecified(h.key, activeMsg.sd);
                 return (
                   <div key={h.key} style={{padding:"12px 16px",borderRadius:12,background:"#f0efec",fontSize:"0.88rem",color:"#555",display:"flex",gap:10,alignItems:"center"}}>
-                    <Icons.unlock s={14} c="#ff5c3a"/>{specified ? h.result(activeMsg.sd[h.key]) : h.unspecified}
+                    <Icons.unlock s={14} c="#ff5c3a"/>{specified ? (activeMsg.hintTexts?.[h.key] || h.result(activeMsg.sd[h.key])) : h.unspecified}
                   </div>
                 );
               })}
@@ -1403,7 +1442,7 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
                       const price = cur.hints[Math.min(idx,cur.hints.length-1)];
                       return (<div key={h.key}>
                         {unlocked
-                          ?<div style={{padding:"14px 18px",borderRadius:12,background:"#f0efec",fontSize:"0.88rem",color:"#555",display:"flex",gap:10,alignItems:"center"}}><Icons.unlock s={14} c="#ff5c3a"/>{specified ? h.result(activeMsg.sd[h.key]) : h.unspecified}</div>
+                          ?<div style={{padding:"14px 18px",borderRadius:12,background:"#f0efec",fontSize:"0.88rem",color:"#555",display:"flex",gap:10,alignItems:"center"}}><Icons.unlock s={14} c="#ff5c3a"/>{specified ? (activeMsg.hintTexts?.[h.key] || h.result(activeMsg.sd[h.key])) : h.unspecified}</div>
                           :<button onClick={()=>unlockHint(h,idx)} disabled={unlocking} style={{width:"100%",padding:"14px 18px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:unlocking?"default":"pointer",fontSize:"0.88rem",transition:"all 0.2s",opacity:unlocking?0.6:1}}>
                             <div style={{display:"flex",alignItems:"center",gap:10}}>
                               {specified ? <Icons.lock s={16} c="#aaa"/> : <Icons.info s={16} c="#aaa"/>}
@@ -1427,15 +1466,25 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
   );
 };
 // ── SEND PAGE ──────────────────────────────────────────────────────────────────
-const SendPage = ({ goTo, params, customization, receiverCurrency }) => {
+const SendPage = ({ goTo, params, receiverCurrency }) => {
   const username = params?.username||"yourname";
-  const theme = THEMES.find(t=>t.key===(customization?.theme||"classic"))||THEMES[0];
-  const bgColor = customization?.bgColor||theme.bg;
+  const [recipientProfile,setRecipientProfile] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.from("public_profiles").select("id, theme, bg_color").eq("username", username).single()
+      .then(({ data }) => { if (!cancelled) setRecipientProfile(data); });
+    return () => { cancelled = true; };
+  }, [username]);
+
+  const theme = THEMES.find(t=>t.key===(recipientProfile?.theme||"classic"))||THEMES[0];
+  const bgColor = recipientProfile?.bg_color || theme.bg;
   const cur = receiverCurrency || CURRENCIES.NG;
   const [msg,setMsg] = useState("");
   const [gender,setGender] = useState("");
   const [birthMonth,setBirthMonth] = useState("");
   const [age,setAge] = useState("");
+  const [senderName,setSenderName] = useState("");
   const [senderEmail,setSenderEmail] = useState("");
   const [sent,setSent] = useState(false);
   const [termsAccepted,setTermsAccepted] = useState(false);
@@ -1446,15 +1495,15 @@ const SendPage = ({ goTo, params, customization, receiverCurrency }) => {
 
   const handleSend = async () => {
     const filtered = filterText(msg.trim(), isMinor);
-    const { data: recipient } = await supabase.from("public_profiles").select("id").eq("username", username).single();
-    if (recipient) {
+    if (recipientProfile?.id) {
       await supabase.from("messages").insert({
-        recipient_id: recipient.id,
+        recipient_id: recipientProfile.id,
         text: filtered,
         sender_email: senderEmail || null,
         sender_gender: gender || null,
         sender_birth_period: birthMonth || null,
         sender_age: age ? Number(age) : null,
+        sender_name: senderName.trim() || null,
       });
     }
     setSent(true);
@@ -1509,6 +1558,12 @@ const SendPage = ({ goTo, params, customization, receiverCurrency }) => {
           <div style={{marginTop:16}}>
             <label style={{fontSize:"0.8rem",fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",color:"#aaa",display:"block",marginBottom:10}}>Your age <span style={{fontWeight:300,textTransform:"none",letterSpacing:0}}>(optional)</span></label>
             <input type="number" inputMode="numeric" min="1" max="120" placeholder="e.g. 24" value={age} onChange={e=>setAge(e.target.value.slice(0,3))} style={{width:"100%",padding:"14px 18px",borderRadius:14,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"0.95rem"}}/>
+          </div>
+
+          <div style={{marginTop:16}}>
+            <label style={{fontSize:"0.8rem",fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",color:"#aaa",display:"block",marginBottom:10}}>Your name <span style={{fontWeight:300,textTransform:"none",letterSpacing:0}}>(optional)</span></label>
+            <Inp placeholder="e.g. Chidera" value={senderName} onChange={e=>setSenderName(e.target.value)}/>
+            <p style={{fontSize:"0.73rem",color:"#aaa",marginTop:5}}>Never shown directly — only ever used for a vague clue like "starts with C".</p>
           </div>
 
           <div style={{marginTop:16}}>
@@ -2876,9 +2931,22 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
   return null;
 };
 // ── CUSTOMIZATION ──────────────────────────────────────────────────────────────
-const Customization = ({ goTo, customization, setCustomization }) => {
+const Customization = ({ goTo, customization, setCustomization, userId }) => {
   const [local,setLocal] = useState(customization);
+  const [saving,setSaving] = useState(false);
+  const [saveErr,setSaveErr] = useState("");
   const theme = THEMES.find(t=>t.key===local.theme)||THEMES[0];
+
+  const save = async () => {
+    if (!userId) { setSaveErr("You need to be logged in to save this."); return; }
+    setSaving(true); setSaveErr("");
+    const { error } = await supabase.from("profiles").update({ theme: local.theme, bg_color: local.bgColor || null }).eq("id", userId);
+    setSaving(false);
+    if (error) { setSaveErr(error.message); return; }
+    setCustomization(local);
+    goTo("settings");
+  };
+
   return (
     <div style={{minHeight:"100vh",background:"#fafaf8"}}>
       <div style={{padding:"20px 28px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
@@ -2914,9 +2982,10 @@ const Customization = ({ goTo, customization, setCustomization }) => {
             <p style={{fontSize:"0.8rem",color:"#888",marginTop:4}}>Send me an anonymous message</p>
           </div>
         </div>
-        <Btn onClick={()=>{setCustomization(local);goTo("settings");}} style={{width:"100%",padding:"15px"}}>
-          <Icons.check s={16} c="white"/>Save changes
+        <Btn onClick={save} style={{width:"100%",padding:"15px"}} disabled={saving}>
+          <Icons.check s={16} c="white"/>{saving?"Saving...":"Save changes"}
         </Btn>
+        {saveErr && <p style={{color:"#ef4444",fontSize:"0.82rem",marginTop:10,textAlign:"center"}}>{saveErr}</p>}
       </div>
     </div>
   );
@@ -2933,7 +3002,12 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
   const [pwErr,setPwErr] = useState("");
   const [saved,setSaved] = useState(false);
   const [saving,setSaving] = useState(false);
+  const [saveErr,setSaveErr] = useState("");
   const [balance,setBalance] = useState(0);
+  const [avatarUrl,setAvatarUrl] = useState(profile?.avatar_url||"");
+  const [uploadingPhoto,setUploadingPhoto] = useState(false);
+  const [photoErr,setPhotoErr] = useState("");
+  const fileInputRef = useRef(null);
   const [toggles,setToggles] = useState({messages:true,discover:true,filter:true,emailNotif:false,newMsg:true,gameInvite:true,hintNotif:false,updates:false});
   const [darkMode,setDarkMode] = useState("auto");
   const [contactSubject,setContactSubject] = useState("Payment issue");
@@ -2957,8 +3031,25 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
   };
 
   useEffect(() => {
-    setName(profile?.name||""); setUsername(profile?.username||""); setGender(profile?.gender||""); setEmail(profile?.email||"");
+    setName(profile?.name||""); setUsername(profile?.username||""); setGender(profile?.gender||""); setEmail(profile?.email||""); setAvatarUrl(profile?.avatar_url||"");
   }, [profile]);
+
+  const handlePhotoSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    if (file.size > 5*1024*1024) { setPhotoErr("File must be under 5MB."); return; }
+    if (!["image/jpeg","image/png","image/gif","image/webp"].includes(file.type)) { setPhotoErr("Please choose a JPG, PNG, GIF or WEBP image."); return; }
+    setPhotoErr(""); setUploadingPhoto(true);
+    const path = `${userId}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert:true });
+    if (uploadError) { setUploadingPhoto(false); setPhotoErr(uploadError.message); return; }
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+    const publicUrl = urlData?.publicUrl;
+    const { error: profileError } = await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", userId);
+    setUploadingPhoto(false);
+    if (profileError) { setPhotoErr(profileError.message); return; }
+    setAvatarUrl(publicUrl);
+  };
 
   useEffect(() => {
     if (!userId) return;
@@ -2966,18 +3057,21 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
   }, [userId]);
 
   const saveProfile = async () => {
-    setSaving(true);
-    await supabase.from("profiles").update({ name, username, gender }).eq("id", userId);
+    setSaving(true); setSaveErr("");
+    const { error } = await supabase.from("profiles").update({ name, username, gender }).eq("id", userId);
     setSaving(false);
+    if (error) { setSaveErr(error.message); return; }
     setSaved(true);
     setTimeout(()=>{setSaved(false);setSec(null);},1500);
   };
 
   const saveEmail = async () => {
-    setSaving(true);
+    setSaving(true); setSaveErr("");
     const { error } = await supabase.auth.updateUser({ email });
-    if (!error) await supabase.from("profiles").update({ email }).eq("id", userId);
+    if (error) { setSaving(false); setSaveErr(error.message); return; }
+    const { error: profileError } = await supabase.from("profiles").update({ email }).eq("id", userId);
     setSaving(false);
+    if (profileError) { setSaveErr(profileError.message); return; }
     setSaved(true);
     setTimeout(()=>setSaved(false),2500);
   };
@@ -3038,6 +3132,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
         </div>
       </div>
       <Btn onClick={saveProfile} style={{width:"100%",marginTop:28,padding:"15px"}} disabled={saving}><Icons.check s={16} c="white"/>{saving?"Saving...":"Save changes"}</Btn>
+      {saveErr && <p style={{color:"#ef4444",fontSize:"0.82rem",marginTop:10,textAlign:"center"}}>{saveErr}</p>}
       {saved&&<p style={{textAlign:"center",marginTop:12,color:"#16a34a",fontSize:"0.85rem",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icons.check s={14} c="#16a34a"/>Saved!</p>}
     </SubPage>
   );
@@ -3048,6 +3143,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
       <Inp type="email" value={email} onChange={e=>setEmail(e.target.value)}/>
       <p style={{marginTop:10,fontSize:"0.82rem",color:"#aaa",display:"flex",alignItems:"center",gap:6}}><Icons.info s={12} c="#aaa"/>A verification email will be sent to your new address.</p>
       <Btn onClick={saveEmail} style={{width:"100%",marginTop:24,padding:"15px"}} disabled={saving}><Icons.check s={16} c="white"/>{saving?"Updating...":"Update email"}</Btn>
+      {saveErr && <p style={{color:"#ef4444",fontSize:"0.82rem",marginTop:10,textAlign:"center"}}>{saveErr}</p>}
       {saved&&<p style={{textAlign:"center",marginTop:12,color:"#16a34a",fontSize:"0.85rem",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icons.check s={14} c="#16a34a"/>Verification sent!</p>}
     </SubPage>
   );
@@ -3075,16 +3171,20 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
 
   if(sec==="photo") return (
     <SubPage title="Profile Picture">
-      <div style={{width:100,height:100,borderRadius:"50%",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 24px"}}><LogoMask size={50} variant="white"/></div>
-      <div style={{background:"#f3f2ef",borderRadius:16,padding:"24px",marginBottom:16,cursor:"pointer",border:"2px dashed #ccc",textAlign:"center"}}>
-        <div style={{display:"flex",justifyContent:"center",marginBottom:8}}><Icons.photo s={32} c="#aaa"/></div>
-        <p style={{fontWeight:600,marginBottom:4}}>Upload a photo</p>
-        <p style={{fontSize:"0.83rem",color:"#aaa"}}>JPG, PNG or GIF. Max 5MB.</p>
-        <p style={{fontSize:"0.72rem",color:"#ccc",marginTop:8}}>Not connected to storage yet — uploads won't save until this is wired to Supabase Storage.</p>
+      <div style={{width:100,height:100,borderRadius:"50%",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 24px",overflow:"hidden"}}>
+        {avatarUrl ? <img src={avatarUrl} alt="Profile" style={{width:"100%",height:"100%",objectFit:"cover"}}/> : <LogoMask size={50} variant="white"/>}
       </div>
-      <Btn outline onClick={()=>setSec(null)} style={{width:"100%"}}>Cancel</Btn>
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handlePhotoSelect} style={{display:"none"}}/>
+      <div onClick={()=>!uploadingPhoto && fileInputRef.current?.click()} style={{background:"#f3f2ef",borderRadius:16,padding:"24px",marginBottom:16,cursor:uploadingPhoto?"default":"pointer",border:"2px dashed #ccc",textAlign:"center",opacity:uploadingPhoto?0.6:1}}>
+        <div style={{display:"flex",justifyContent:"center",marginBottom:8}}><Icons.photo s={32} c="#aaa"/></div>
+        <p style={{fontWeight:600,marginBottom:4}}>{uploadingPhoto?"Uploading...":avatarUrl?"Change photo":"Upload a photo"}</p>
+        <p style={{fontSize:"0.83rem",color:"#aaa"}}>JPG, PNG, GIF or WEBP. Max 5MB.</p>
+      </div>
+      {photoErr && <p style={{color:"#ef4444",fontSize:"0.82rem",marginBottom:12,textAlign:"center"}}>{photoErr}</p>}
+      <Btn outline onClick={()=>setSec(null)} style={{width:"100%"}}>Done</Btn>
     </SubPage>
   );
+
 
   if(sec==="help") return (
     <SubPage title="Help & FAQ">
@@ -3202,7 +3302,9 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
       <AppNav goTo={goTo} active="settings" userId={userId}/>
       <div style={{maxWidth:600,margin:"0 auto",padding:"32px 20px"}}>
         <div className="fadeUp" style={{display:"flex",alignItems:"center",gap:16,marginBottom:20}}>
-          <div style={{width:64,height:64,borderRadius:"50%",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center"}}><LogoMask size={32} variant="white"/></div>
+          <div style={{width:64,height:64,borderRadius:"50%",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+            {avatarUrl ? <img src={avatarUrl} alt="Profile" style={{width:"100%",height:"100%",objectFit:"cover"}}/> : <LogoMask size={32} variant="white"/>}
+          </div>
           <div><h2 className="syne" style={{fontSize:"1.3rem",fontWeight:800}}>{profile?.name||"Your Name"}</h2><p style={{color:"#888",fontSize:"0.88rem"}}>{window.location.host}/{profile?.username||"yourname"}</p></div>
         </div>
 
@@ -3322,6 +3424,9 @@ export default function App() {
         return;
       }
       setProfile(data);
+      // Reflect the owner's saved send-page theme in this session too, so
+      // their own "Preview" matches what visitors to their link actually see.
+      if (data.theme || data.bg_color) setCustomization({ theme: data.theme || "classic", bgColor: data.bg_color || "" });
     }
   };
 
@@ -3446,14 +3551,14 @@ export default function App() {
     forgot:        <ForgotPassword goTo={goTo}/>,
     terms:         <Terms goTo={goTo} fromSend={false}/>,
     inbox:         <Inbox goTo={goTo} currency={currency} isMinor={isMinor} userId={session?.user?.id} username={profile?.username||"yourname"} hintsDisabled={platformSettings?.hint_purchases_enabled===false}/>,
-    send:          <SendPage goTo={goTo} params={params} customization={customization} receiverCurrency={currency}/>,
+    send:          <SendPage goTo={goTo} params={params} receiverCurrency={currency}/>,
     stats:         <Stats goTo={goTo} userId={session?.user?.id}/>,
     wallet:        <Wallet goTo={goTo} currency={currency} userId={session?.user?.id} userName={profile?.name} withdrawalsDisabled={platformSettings?.withdrawals_enabled===false}/>,
     games:         <Games goTo={goTo} mysteryFrozen={platformSettings?.mystery_lobby_frozen} stakeFrozen={platformSettings?.stake_win_frozen} userId={session?.user?.id}/>,
     "game-lobby":  <GameLobby goTo={goTo} frozen={platformSettings?.mystery_lobby_frozen} joinCode={params?.joinCode} userId={session?.user?.id} userName={profile?.name||profile?.username}/>,
     "game-stake":  <GameStake goTo={goTo} currency={currency} is18Plus={is18Plus} frozen={platformSettings?.stake_win_frozen} joinCode={params?.joinCode} userId={session?.user?.id} userName={profile?.name||profile?.username}/>,
     settings:      <Settings goTo={goTo} customization={customization} setCustomization={setCustomization} currency={currency} profile={profile} userId={session?.user?.id} onLogout={handleLogout}/>,
-    customization: <Customization goTo={goTo} customization={customization} setCustomization={setCustomization}/>,
+    customization: <Customization goTo={goTo} customization={customization} setCustomization={setCustomization} userId={session?.user?.id}/>,
   };
 
   return (
