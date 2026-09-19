@@ -1490,6 +1490,8 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
   const [age,setAge] = useState("");
   const [senderName,setSenderName] = useState("");
   const [senderEmail,setSenderEmail] = useState("");
+  const [honeypot,setHoneypot] = useState(""); // real users never see or fill this — bots that auto-fill every field do
+  const [sendErr,setSendErr] = useState("");
   const [sent,setSent] = useState(false);
   const [termsAccepted,setTermsAccepted] = useState(false);
   const [showTermsRead,setShowTermsRead] = useState(false);
@@ -1498,9 +1500,11 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
   const isMinor = false;
 
   const handleSend = async () => {
+    if (honeypot) { setSent(true); return; } // silently "succeed" for bots — don't tip them off
+    setSendErr("");
     const filtered = filterText(msg.trim(), isMinor);
     if (recipientProfile?.id) {
-      await supabase.from("messages").insert({
+      const { error } = await supabase.from("messages").insert({
         recipient_id: recipientProfile.id,
         text: filtered,
         sender_email: senderEmail || null,
@@ -1508,7 +1512,12 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
         sender_birth_period: birthMonth || null,
         sender_age: age ? Number(age) : null,
         sender_name: senderName.trim() || null,
+        sender_device_token: getGuestToken(),
       });
+      if (error) {
+        setSendErr(error.message?.includes("rate_limited") ? "You're sending messages a little too fast — please wait a bit and try again." : "Something went wrong sending your message. Please try again.");
+        return;
+      }
     }
     setSent(true);
   };
@@ -1583,9 +1592,14 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
             <p style={{fontSize:"0.83rem",color:"#666",lineHeight:1.6}}>I accept the <span style={{color:theme.accent,textDecoration:"underline",cursor:"pointer",fontWeight:500}} onClick={()=>setShowTermsRead(true)}>Terms & Conditions</span>. My message is anonymous.</p>
           </div>
 
+          {/* Honeypot — invisible to real people, but a script that blindly fills every
+              input on the page will fill this too, which is how we know to ignore it. */}
+          <input type="text" name="website" value={honeypot} onChange={e=>setHoneypot(e.target.value)} autoComplete="off" tabIndex={-1} aria-hidden="true" style={{position:"absolute",left:"-9999px",width:1,height:1,opacity:0}}/>
+
           <Btn onClick={handleSend} style={{width:"100%",marginTop:16,padding:"15px",background:theme.accent}} disabled={!msg.trim()||!termsAccepted}>
             <Icons.share s={16} c="white"/>Send anonymously
           </Btn>
+          {sendErr && <p style={{textAlign:"center",marginTop:10,fontSize:"0.82rem",color:"#ef4444"}}>{sendErr}</p>}
           <p style={{textAlign:"center",marginTop:12,fontSize:"0.78rem",color:"#ccc",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><Icons.lock s={12} c="#ccc"/>100% anonymous · Your identity is never revealed</p>
         </div>
         <div className="fadeUp2" style={{marginTop:28,textAlign:"center"}}>
