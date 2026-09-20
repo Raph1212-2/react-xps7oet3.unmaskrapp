@@ -152,6 +152,21 @@ const Tog = ({ on, onToggle }) => (
 );
 const Tag = ({ text }) => <p style={{fontSize:"0.72rem",fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",color:"#ff5c3a",marginBottom:14}}>{text}</p>;
 
+// Defined here at module level (not inside Settings) on purpose — a component
+// defined inside another component's body gets recreated on every render of
+// its parent, which makes React tear down and rebuild the whole subtree
+// (including any <input> inside it) on every keystroke, dropping focus and
+// dismissing the mobile keyboard after each letter. Keeping it stable here
+// fixes exactly that.
+const SubPage = ({title,onBack,children}) => (
+  <div style={{minHeight:"100vh",background:"#fafaf8"}}>
+    <div style={{padding:"20px 28px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)",position:"sticky",top:0,background:"#fafaf8",zIndex:10}}>
+      <BackBtn onClick={onBack}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>{title}</span>
+    </div>
+    <div style={{maxWidth:480,margin:"0 auto",padding:"32px 24px"}}>{children}</div>
+  </div>
+);
+
 const Avatar = ({ size=36, bg="#0e0e0e", iconColor="white", iconSize }) => (
   <div style={{width:size,height:size,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
     <Icons.user s={iconSize||Math.round(size*0.5)} c={iconColor}/>
@@ -3117,17 +3132,8 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
     {key:"profile",icon:<Icons.user s={18} c="#555"/>,label:"Edit Profile",desc:"Name, username, gender"},
   ];
 
-  const SubPage = ({title,children}) => (
-    <div style={{minHeight:"100vh",background:"#fafaf8"}}>
-      <div style={{padding:"20px 28px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)",position:"sticky",top:0,background:"#fafaf8",zIndex:10}}>
-        <BackBtn onClick={()=>setSec(null)}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>{title}</span>
-      </div>
-      <div style={{maxWidth:480,margin:"0 auto",padding:"32px 24px"}}>{children}</div>
-    </div>
-  );
-
   if(sec==="profile") return (
-    <SubPage title="Edit Profile">
+    <SubPage title="Edit Profile" onBack={()=>setSec(null)}>
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
         <div>
           <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Full name</label>
@@ -3156,7 +3162,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
   );
 
   if(sec==="account") return (
-    <SubPage title="Account Details">
+    <SubPage title="Account Details" onBack={()=>setSec(null)}>
       <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Email address</label>
       <Inp type="email" value={email} onChange={e=>setEmail(e.target.value)}/>
       <p style={{marginTop:10,fontSize:"0.82rem",color:"#aaa",display:"flex",alignItems:"center",gap:6}}><Icons.info s={12} c="#aaa"/>A verification email will be sent to your new address.</p>
@@ -3167,7 +3173,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
   );
 
   if(sec==="password") return (
-    <SubPage title="Change Password">
+    <SubPage title="Change Password" onBack={()=>setSec(null)}>
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
         <div>
           <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>New password</label>
@@ -3188,7 +3194,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
   );
 
   if(sec==="photo") return (
-    <SubPage title="Profile Picture">
+    <SubPage title="Profile Picture" onBack={()=>setSec(null)}>
       <div style={{width:100,height:100,borderRadius:"50%",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 24px",overflow:"hidden"}}>
         {avatarUrl ? <img src={avatarUrl} alt="Profile" style={{width:"100%",height:"100%",objectFit:"cover"}}/> : <LogoMask size={50} variant="white"/>}
       </div>
@@ -3205,7 +3211,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
 
 
   if(sec==="help") return (
-    <SubPage title="Help & FAQ">
+    <SubPage title="Help & FAQ" onBack={()=>setSec(null)}>
       {[
         {q:"Is Unmaskr really anonymous?",a:"Yes. Senders are completely anonymous. Hints are based on general data they voluntarily share — never their exact identity. If a sender doesn't share a piece of info, that hint is shown for free."},
         {q:"How do I earn from hints?",a:"When someone pays to see a hint on your message, 50% goes to your wallet automatically. Withdraw anytime — balances never expire."},
@@ -3223,7 +3229,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
   );
 
   if(sec==="contact") return (
-    <SubPage title="Contact Support">
+    <SubPage title="Contact Support" onBack={()=>setSec(null)}>
       <div style={{textAlign:"center",marginBottom:32}}>
         <div style={{width:56,height:56,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><Icons.chat s={24} c="#0e0e0e"/></div>
         <h2 className="syne" style={{fontSize:"1.5rem",fontWeight:800,marginBottom:8}}>We're here to help</h2>
@@ -3266,7 +3272,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
   );
 
   if(sec==="privacy") return (
-    <SubPage title="Privacy & Safety">
+    <SubPage title="Privacy & Safety" onBack={()=>setSec(null)}>
       {[
         {k:"messages",l:"Allow anonymous messages",d:"Turn off to stop new messages"},
         {k:"discover",l:"Show in discover",d:"Let others find your profile"},
@@ -3286,7 +3292,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
   );
 
   if(sec==="notifications") return (
-    <SubPage title="Notifications">
+    <SubPage title="Notifications" onBack={()=>setSec(null)}>
       {[
         {k:"newMsg",l:"New messages",d:"When someone sends you a message"},
         {k:"gameInvite",l:"Game invites",d:"When a friend invites you to a game"},
@@ -3302,7 +3308,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
   );
 
   if(sec==="appearance") return (
-    <SubPage title="Appearance">
+    <SubPage title="Appearance" onBack={()=>setSec(null)}>
       <p style={{fontSize:"0.88rem",color:"#888",marginBottom:24,fontWeight:300}}>Choose how Unmaskr looks. Automatic follows your device.</p>
       {[{k:"auto",l:"Automatic",d:"Follows your device setting"},{k:"light",l:"Light",d:"Always light mode"},{k:"dark",l:"Dark",d:"Always dark mode"}].map(m=>(
         <button key={m.k} onClick={()=>setDarkMode(m.k)} style={{width:"100%",padding:"16px 18px",borderRadius:14,border:`1.5px solid ${darkMode===m.k?"#0e0e0e":"rgba(0,0,0,0.1)"}`,background:darkMode===m.k?"#0e0e0e":"white",color:darkMode===m.k?"white":"#0e0e0e",cursor:"pointer",textAlign:"left",marginBottom:10,transition:"all 0.2s",display:"flex",alignItems:"center",gap:12}}>
