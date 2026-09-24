@@ -8,9 +8,20 @@ import { ALL_QUESTIONS } from './triviaQuestions';
 // ── REAL LOGO (from brand asset) ────────────────────────────────────────────────
 // LogoMask = just the mask icon. LogoFull = mask + "unmaskr" wordmark lockup.
 // Use variant="white" on dark backgrounds, default (black) on light backgrounds.
-const LogoMask = ({ size=24, variant="black", style={} }) => (
-  <img src={variant==="white"?logoMaskWhite:logoMaskBlack} alt="Unmaskr" style={{ height:size, width:"auto", display:"block", ...style }}/>
+const MaskFallback = ({ size, white, style }) => (
+  <svg height={size} width={size*1.24} viewBox="0 0 130 105" fill={white?"#ffffff":"#0e0e0e"} style={{ display:"block", ...style }}>
+    <path d="M65 5 C35 5 10 22 10 46 C10 63 22 77 40 83 C38 91 30 99 20 103 C33 100 48 93 57 85 C59 86 62 86 65 86 C95 86 120 68 120 46 C120 22 95 5 65 5 Z"/>
+    <ellipse cx="44" cy="44" rx="10" ry="11" fill={white?"#0e0e0e":"#ffffff"}/>
+    <ellipse cx="86" cy="44" rx="10" ry="11" fill={white?"#0e0e0e":"#ffffff"}/>
+    <path d="M38 64 Q65 82 92 64" stroke={white?"#0e0e0e":"#ffffff"} strokeWidth="4.5" fill="none" strokeLinecap="round"/>
+  </svg>
 );
+const LogoMask = ({ size=24, variant="black", style={} }) => {
+  const [failed,setFailed] = useState(false);
+  const white = variant==="white";
+  if (failed) return <MaskFallback size={size} white={white} style={style}/>;
+  return <img src={white?logoMaskWhite:logoMaskBlack} alt="Unmaskr" onError={()=>setFailed(true)} style={{ height:size, width:"auto", display:"block", ...style }}/>;
+};
 // Composed from the mask icon + styled wordmark text (rather than a separate
 // full-lockup image file) — one less asset to keep in sync, and it can't go
 // stale/corrupt the way an embedded binary blob can.
@@ -1111,7 +1122,7 @@ const ForgotPassword = ({ goTo }) => {
   const sendReset = async () => {
     if (resendCooldown > 0) return;
     setLoading(true); setErr("");
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
     setLoading(false);
     if (error) { setErr(error.message); return; }
     setResendCooldown(90);
@@ -1120,48 +1131,65 @@ const ForgotPassword = ({ goTo }) => {
 
   const verifyCode = async () => {
     setLoading(true); setErr("");
-    const { error } = await supabase.auth.verifyOtp({ email, token: code, type: "recovery" });
+    const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: "recovery" });
     setLoading(false);
-    if (error) { setErr(error.message); return; }
+    if (error) { setErr("That code is wrong or has expired."); return; }
     setStep(3);
   };
 
   const resetPassword = async () => {
     if (newPass !== confirmPass) { setErr("Passwords don't match."); return; }
+    if (newPass.length < 8 || !/[0-9!@#$%^&*]/.test(newPass)) { setErr("Min. 8 characters, with at least one number or symbol."); return; }
     setLoading(true); setErr("");
     const { error } = await supabase.auth.updateUser({ password: newPass });
     setLoading(false);
     if (error) { setErr(error.message); return; }
+    await supabase.auth.signOut();
     goTo("login");
   };
 
+  const iconCircle = (I) => (
+    <div style={{width:52,height:52,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}><I s={24} c="#0e0e0e"/></div>
+  );
+  const errLine = err && <p style={{color:"#ef4444",fontSize:"0.82rem",marginTop:10}}>{err}</p>;
+
   return (
     <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",flexDirection:"column"}}>
-      <div style={{padding:"20px 32px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)"}}><BackBtn onClick={()=>goTo("login")}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Reset password</span></div>
+      <div style={{padding:"20px 32px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
+        <BackBtn onClick={()=>goTo("login")}/>
+        <LogoMask size={24}/>
+        <span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Reset password</span>
+      </div>
       <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px"}}>
         <div className="popIn" style={{width:"100%",maxWidth:400}}>
-          {step===1 && <><div style={{width:52,height:52,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}><Icons.lock s={24} c="#0e0e0e"/></div>
+          {step===1 && <>
+            {iconCircle(Icons.lock)}
             <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginBottom:8}}>Forgot your password?</h2>
-            <p style={{color:"#888",fontSize:"0.9rem",marginBottom:28,fontWeight:300}}>Enter your email and we'll send a reset code.</p>
+            <p style={{color:"#888",fontSize:"0.9rem",marginBottom:28,fontWeight:300}}>Enter your email and we'll send a 6-digit code.</p>
             <Inp placeholder="Email address" type="email" value={email} onChange={e=>setEmail(e.target.value)}/>
-            {err && <p style={{color:"#ef4444",fontSize:"0.82rem",marginTop:10}}>{err}</p>}
-            <Btn onClick={sendReset} style={{width:"100%",marginTop:16,padding:"15px"}} disabled={!email||loading}>{loading?"Sending...":"Send reset code"}</Btn></>}
-          {step===2 && <><div style={{width:52,height:52,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}><Icons.mail s={24} c="#0e0e0e"/></div>
-            <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginBottom:8}}>Check your email</h2>
+            {errLine}
+            <Btn onClick={sendReset} style={{width:"100%",marginTop:16,padding:"15px"}} disabled={!email||loading}>{loading?"Sending...":"Send reset code"}</Btn>
+          </>}
+          {step===2 && <>
+            {iconCircle(Icons.mail)}
+            <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginBottom:8}}>Enter your code</h2>
             <p style={{color:"#888",fontSize:"0.9rem",marginBottom:28,fontWeight:300}}>We sent a 6-digit code to <strong>{email}</strong></p>
-            <Inp placeholder="Enter 6-digit code" value={code} onChange={e=>setCode(e.target.value)}/>
-            {err && <p style={{color:"#ef4444",fontSize:"0.82rem",marginTop:10}}>{err}</p>}
-            <Btn onClick={verifyCode} style={{width:"100%",marginTop:16,padding:"15px"}} disabled={code.length<4||loading}>{loading?"Verifying...":"Verify code"}</Btn>
-            <p style={{textAlign:"center",marginTop:14,fontSize:"0.85rem",color:"#aaa"}}>Didn't get it? {resendCooldown>0 ? <span style={{color:"#ccc"}}>Resend in {String(Math.floor(resendCooldown/60)).padStart(1,"0")}:{String(resendCooldown%60).padStart(2,"0")}</span> : <span style={{color:"#ff5c3a",cursor:"pointer"}} onClick={sendReset}>Resend</span>}</p></>}
-          {step===3 && <><div style={{width:52,height:52,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}><Icons.unlock s={24} c="#0e0e0e"/></div>
+            <Inp placeholder="6-digit code" value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))}/>
+            {errLine}
+            <Btn onClick={verifyCode} style={{width:"100%",marginTop:16,padding:"15px"}} disabled={code.length<6||loading}>{loading?"Verifying...":"Verify code"}</Btn>
+            <p style={{textAlign:"center",marginTop:14,fontSize:"0.85rem",color:"#aaa"}}>Didn't get it? {resendCooldown>0 ? <span style={{color:"#ccc"}}>Resend in {Math.floor(resendCooldown/60)}:{String(resendCooldown%60).padStart(2,"0")}</span> : <span style={{color:"#ff5c3a",cursor:"pointer"}} onClick={sendReset}>Resend</span>}</p>
+          </>}
+          {step===3 && <>
+            {iconCircle(Icons.unlock)}
             <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginBottom:8}}>New password</h2>
             <p style={{color:"#888",fontSize:"0.9rem",marginBottom:28,fontWeight:300}}>Choose a strong new password.</p>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
               <Inp placeholder="New password (min 8 chars + number/symbol)" type="password" value={newPass} onChange={e=>setNewPass(e.target.value)}/>
               <Inp placeholder="Confirm new password" type="password" value={confirmPass} onChange={e=>setConfirmPass(e.target.value)}/>
             </div>
-            {err && <p style={{color:"#ef4444",fontSize:"0.82rem",marginTop:10}}>{err}</p>}
-            <Btn onClick={resetPassword} style={{width:"100%",marginTop:16,padding:"15px"}} disabled={!newPass||newPass.length<8||loading}>{loading?"Saving...":"Reset password"}</Btn></>}
+            {errLine}
+            <Btn onClick={resetPassword} style={{width:"100%",marginTop:16,padding:"15px"}} disabled={newPass.length<8||!confirmPass||loading}>{loading?"Saving...":"Reset password"}</Btn>
+          </>}
         </div>
       </div>
     </div>
@@ -1485,6 +1513,13 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
   );
 };
 // ── SEND PAGE ──────────────────────────────────────────────────────────────────
+const isDarkColor = (hex) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  return (0.299*((n>>16)&255) + 0.587*((n>>8)&255) + 0.114*(n&255)) < 140;
+};
+
 const SendPage = ({ goTo, params, receiverCurrency }) => {
   const username = params?.username||"yourname";
   const [recipientProfile,setRecipientProfile] = useState(null);
@@ -1498,14 +1533,15 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
 
   const theme = THEMES.find(t=>t.key===(recipientProfile?.theme||"classic"))||THEMES[0];
   const bgColor = recipientProfile?.bg_color || theme.bg;
-  const cur = receiverCurrency || CURRENCIES.NG;
+  const darkBg = isDarkColor(bgColor);
+  const pageText = darkBg ? "#ffffff" : "#0e0e0e";
   const [msg,setMsg] = useState("");
   const [gender,setGender] = useState("");
   const [birthMonth,setBirthMonth] = useState("");
   const [age,setAge] = useState("");
   const [senderName,setSenderName] = useState("");
   const [senderEmail,setSenderEmail] = useState("");
-  const [honeypot,setHoneypot] = useState(""); // real users never see or fill this — bots that auto-fill every field do
+  const [honeypot,setHoneypot] = useState("");
   const [sendErr,setSendErr] = useState("");
   const [sent,setSent] = useState(false);
   const [termsAccepted,setTermsAccepted] = useState(false);
@@ -1513,9 +1549,11 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
   const MAX = 300;
   const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const isMinor = false;
+  const lbl = {fontSize:"0.8rem",fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",color:"#aaa",display:"block",marginBottom:10};
+  const opt = {fontWeight:300,textTransform:"none",letterSpacing:0};
 
   const handleSend = async () => {
-    if (honeypot) { setSent(true); return; } // silently "succeed" for bots — don't tip them off
+    if (honeypot) { setSent(true); return; }
     setSendErr("");
     const filtered = filterText(msg.trim(), isMinor);
     if (recipientProfile?.id) {
@@ -1539,12 +1577,12 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
 
   if(showTermsRead) return <Terms goTo={goTo} fromSend onAccept={v=>{setTermsAccepted(v);setShowTermsRead(false);}}/>;
   if(sent) return (
-    <div style={{minHeight:"100vh",background:bgColor,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+    <div style={{minHeight:"100vh",background:bgColor,color:pageText,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
       <div className="popIn" style={{maxWidth:380}}>
         <div style={{width:72,height:72,borderRadius:"50%",background:theme.accent,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}><Icons.check s={32} c="white"/></div>
         <h2 className="syne" style={{fontSize:"2rem",fontWeight:800,marginBottom:12}}>Message sent!</h2>
         <p style={{color:"#888",fontSize:"0.95rem",lineHeight:1.7,marginBottom:32,fontWeight:300}}>Your anonymous message has been delivered. They'll never know it was you.</p>
-        {senderEmail&&<p style={{fontSize:"0.83rem",color:"#888",marginBottom:16,padding:"12px 14px",background:"rgba(0,0,0,0.04)",borderRadius:10}}>We'll email <strong>{senderEmail}</strong> if {username} replies.</p>}
+        {senderEmail&&<p style={{fontSize:"0.83rem",color:"#888",marginBottom:16,padding:"12px 14px",background:"rgba(128,128,128,0.15)",borderRadius:10}}>We'll email <strong>{senderEmail}</strong> if {username} replies.</p>}
         <Btn onClick={()=>goTo("signup")} style={{width:"100%",padding:"15px",background:theme.accent}}>Create your own Unmaskr link</Btn>
         <p style={{marginTop:16,fontSize:"0.85rem",color:"#aaa",cursor:"pointer"}} onClick={()=>setSent(false)}>Send another</p>
       </div>
@@ -1552,23 +1590,23 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
   );
 
   return (
-    <div style={{minHeight:"100vh",background:bgColor}}>
-      <div style={{padding:"18px 28px",borderBottom:"1px solid rgba(0,0,0,0.07)",display:"flex",alignItems:"center",gap:9}}>
-        <Icons.mask size={22} color={theme.accent}/><span className="syne" style={{fontWeight:800,fontSize:"1.05rem"}}>unmaskr</span>
+    <div style={{minHeight:"100vh",background:bgColor,color:pageText}}>
+      <div style={{padding:"18px 28px",borderBottom:"1px solid rgba(128,128,128,0.2)",display:"flex",alignItems:"center"}}>
+        <LogoFull height={24} variant={darkBg?"white":"black"}/>
       </div>
       <div style={{maxWidth:480,margin:"0 auto",padding:"48px 24px"}}>
         <div className="fadeUp" style={{textAlign:"center",marginBottom:40}}>
-          <div style={{width:72,height:72,borderRadius:"50%",background:theme.accent,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><Icons.mask size={36} color="white"/></div>
+          <div style={{width:72,height:72,borderRadius:"50%",background:theme.accent,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><LogoMask size={36} variant="white"/></div>
           <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginBottom:6}}>@{username}</h2>
           <p style={{color:"#888",fontSize:"0.9rem",fontWeight:300}}>Send an anonymous message. They won't know it's you.</p>
         </div>
-        <div className="fadeUp1" style={{background:theme.card,borderRadius:20,padding:"28px 24px",border:"1px solid rgba(0,0,0,0.08)"}}>
-          <label style={{fontSize:"0.8rem",fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",color:"#aaa",display:"block",marginBottom:10}}>Your message</label>
+        <div className="fadeUp1" style={{background:theme.card,color:"#0e0e0e",borderRadius:20,padding:"28px 24px",border:"1px solid rgba(0,0,0,0.08)"}}>
+          <label style={lbl}>Your message</label>
           <textarea placeholder={`Say something honest to @${username}...`} value={msg} onChange={e=>e.target.value.length<=MAX&&setMsg(e.target.value)} rows={4} style={{width:"100%",padding:"14px 16px",borderRadius:14,border:"1.5px solid rgba(0,0,0,0.1)",background:"#fafaf8",fontSize:"0.95rem",resize:"none",lineHeight:1.6}}/>
           <div style={{textAlign:"right",fontSize:"0.75rem",color:msg.length>MAX*0.85?"#ff5c3a":"#ccc",marginTop:4}}>{msg.length}/{MAX}</div>
 
           <div style={{marginTop:16}}>
-            <label style={{fontSize:"0.8rem",fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",color:"#aaa",display:"block",marginBottom:10}}>Your gender <span style={{fontWeight:300,textTransform:"none",letterSpacing:0}}>(optional)</span></label>
+            <label style={lbl}>Your gender <span style={opt}>(optional)</span></label>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               {["Male","Female","Non-binary","Prefer not to say"].map(g=>(
                 <button key={g} onClick={()=>setGender(gender===g?"":g)} style={{padding:"8px 14px",borderRadius:50,fontSize:"0.8rem",border:`1.5px solid ${gender===g?theme.accent:"rgba(0,0,0,0.1)"}`,background:gender===g?theme.accent:"white",color:gender===g?"white":"#555",cursor:"pointer",transition:"all 0.2s"}}>{g}</button>
@@ -1577,27 +1615,25 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
           </div>
 
           <div style={{marginTop:16}}>
-            <label style={{fontSize:"0.8rem",fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",color:"#aaa",display:"block",marginBottom:10}}>Birth month <span style={{fontWeight:300,textTransform:"none",letterSpacing:0}}>(optional)</span></label>
+            <label style={lbl}>Birth month <span style={opt}>(optional)</span></label>
             <select value={birthMonth} onChange={e=>setBirthMonth(e.target.value)} style={{width:"100%",padding:"12px 16px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.1)",background:"white",fontSize:"0.9rem",cursor:"pointer"}}>
               <option value="">Select birth month</option>{months.map(m=><option key={m} value={m}>{m}</option>)}
             </select>
           </div>
 
           <div style={{marginTop:16}}>
-            <label style={{fontSize:"0.8rem",fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",color:"#aaa",display:"block",marginBottom:10}}>Your age <span style={{fontWeight:300,textTransform:"none",letterSpacing:0}}>(optional)</span></label>
+            <label style={lbl}>Your age <span style={opt}>(optional)</span></label>
             <input type="number" inputMode="numeric" min="1" max="120" placeholder="e.g. 24" value={age} onChange={e=>setAge(e.target.value.slice(0,3))} style={{width:"100%",padding:"14px 18px",borderRadius:14,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"0.95rem"}}/>
           </div>
 
           <div style={{marginTop:16}}>
-            <label style={{fontSize:"0.8rem",fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",color:"#aaa",display:"block",marginBottom:10}}>Your name <span style={{fontWeight:300,textTransform:"none",letterSpacing:0}}>(optional)</span></label>
+            <label style={lbl}>Your name <span style={opt}>(optional)</span></label>
             <Inp placeholder="e.g. Chidera" value={senderName} onChange={e=>setSenderName(e.target.value)}/>
             <p style={{fontSize:"0.73rem",color:"#aaa",marginTop:5}}>Never shown directly — only ever used for a vague clue like "starts with C".</p>
           </div>
 
           <div style={{marginTop:16}}>
-            <label style={{fontSize:"0.8rem",fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",color:"#aaa",display:"block",marginBottom:10}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}><Icons.mail s={14} c="#aaa"/>Your email <span style={{fontWeight:300,textTransform:"none",letterSpacing:0}}>(optional — get notified if they reply)</span></div>
-            </label>
+            <label style={lbl}><span style={{display:"flex",alignItems:"center",gap:6}}><Icons.mail s={14} c="#aaa"/>Your email <span style={opt}>(optional — get notified if they reply)</span></span></label>
             <Inp placeholder="your@email.com" type="email" value={senderEmail} onChange={e=>setSenderEmail(e.target.value)}/>
             <p style={{fontSize:"0.73rem",color:"#aaa",marginTop:5,display:"flex",alignItems:"center",gap:4}}><Icons.info s={12} c="#aaa"/>Unmaskr will email you if {username} replies. Your email stays private.</p>
           </div>
@@ -1607,8 +1643,6 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
             <p style={{fontSize:"0.83rem",color:"#666",lineHeight:1.6}}>I accept the <span style={{color:theme.accent,textDecoration:"underline",cursor:"pointer",fontWeight:500}} onClick={()=>setShowTermsRead(true)}>Terms & Conditions</span>. My message is anonymous.</p>
           </div>
 
-          {/* Honeypot — invisible to real people, but a script that blindly fills every
-              input on the page will fill this too, which is how we know to ignore it. */}
           <input type="text" name="website" value={honeypot} onChange={e=>setHoneypot(e.target.value)} autoComplete="off" tabIndex={-1} aria-hidden="true" style={{position:"absolute",left:"-9999px",width:1,height:1,opacity:0}}/>
 
           <Btn onClick={handleSend} style={{width:"100%",marginTop:16,padding:"15px",background:theme.accent}} disabled={!msg.trim()||!termsAccepted}>
@@ -1619,12 +1653,13 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
         </div>
         <div className="fadeUp2" style={{marginTop:28,textAlign:"center"}}>
           <p style={{fontSize:"0.85rem",color:"#888",marginBottom:14}}>Want your own anonymous message link?</p>
-          <Btn outline onClick={()=>goTo("signup")} style={{fontSize:"0.85rem",padding:"10px 22px"}}>Create yours free</Btn>
+          <Btn outline onClick={()=>goTo("signup")} style={{fontSize:"0.85rem",padding:"10px 22px",color:pageText,borderColor:darkBg?"rgba(255,255,255,0.4)":"rgba(0,0,0,0.2)"}}>Create yours free</Btn>
         </div>
       </div>
     </div>
   );
 };
+
 // ── STATS ──────────────────────────────────────────────────────────────────────
 const Stats = ({ goTo, userId }) => {
   const [loading,setLoading] = useState(true);
@@ -3023,6 +3058,42 @@ const Customization = ({ goTo, customization, setCustomization, userId }) => {
     </div>
   );
 };
+const ChangePassword = ({ profile, onBack }) => {
+  const [pw,setPw] = useState({current:"",newPass:"",confirm:""});
+  const [err,setErr] = useState("");
+  const [saving,setSaving] = useState(false);
+  const [saved,setSaved] = useState(false);
+  const save = async () => {
+    if (pw.newPass !== pw.confirm) { setErr("Passwords don't match."); return; }
+    if (pw.newPass.length < 8 || !/[0-9!@#$%^&*]/.test(pw.newPass)) { setErr("Min. 8 characters, with at least one number or symbol."); return; }
+    if (pw.newPass === pw.current) { setErr("New password must be different from your current one."); return; }
+    setSaving(true); setErr("");
+    const { error: verifyError } = await supabase.auth.signInWithPassword({ email: profile?.email, password: pw.current });
+    if (verifyError) { setSaving(false); setErr("Your current password is wrong."); return; }
+    const { error } = await supabase.auth.updateUser({ password: pw.newPass });
+    setSaving(false);
+    if (error) { setErr(error.message); return; }
+    setSaved(true);
+    setTimeout(onBack, 1500);
+  };
+  return (
+    <SubPage title="Change Password" onBack={onBack}>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        {[["Current password","current"],["New password","newPass"],["Confirm new password","confirm"]].map(([label,key])=>(
+          <div key={key}>
+            <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>{label}</label>
+            <Inp type="password" value={pw[key]} onChange={e=>setPw(p=>({...p,[key]:e.target.value}))}/>
+          </div>
+        ))}
+      </div>
+      <p style={{fontSize:"0.78rem",color:"#aaa",marginTop:10}}>Min. 8 characters, at least one number or symbol.</p>
+      {err && <p style={{color:"#ef4444",fontSize:"0.82rem",marginTop:6}}>{err}</p>}
+      <Btn onClick={save} style={{width:"100%",marginTop:24,padding:"15px"}} disabled={!pw.current||pw.newPass.length<8||pw.newPass!==pw.confirm||saving}>{saving?"Updating...":"Update password"}</Btn>
+      {saved && <p style={{textAlign:"center",marginTop:12,color:"#16a34a",fontSize:"0.85rem"}}>Password updated!</p>}
+    </SubPage>
+  );
+};
+
 // ── SETTINGS ───────────────────────────────────────────────────────────────────
 const Settings = ({ goTo, customization, setCustomization, currency, profile, userId, onLogout }) => {
   const cur = currency || CURRENCIES.NG;
@@ -3171,6 +3242,8 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
       {saved&&<p style={{textAlign:"center",marginTop:12,color:"#16a34a",fontSize:"0.85rem",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icons.check s={14} c="#16a34a"/>Verification sent!</p>}
     </SubPage>
   );
+
+  if(sec==="password") return <ChangePassword profile={profile} onBack={()=>setSec(null)}/>;
 
   if(sec==="password") return (
     <SubPage title="Change Password" onBack={()=>setSec(null)}>
