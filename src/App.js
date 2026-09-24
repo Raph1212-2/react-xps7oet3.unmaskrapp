@@ -8,20 +8,21 @@ import { ALL_QUESTIONS } from './triviaQuestions';
 // ── REAL LOGO (from brand asset) ────────────────────────────────────────────────
 // LogoMask = just the mask icon. LogoFull = mask + "unmaskr" wordmark lockup.
 // Use variant="white" on dark backgrounds, default (black) on light backgrounds.
-const MaskFallback = ({ size, white, style }) => (
-  <svg height={size} width={size*1.24} viewBox="0 0 130 105" fill={white?"#ffffff":"#0e0e0e"} style={{ display:"block", ...style }}>
-    <path d="M65 5 C35 5 10 22 10 46 C10 63 22 77 40 83 C38 91 30 99 20 103 C33 100 48 93 57 85 C59 86 62 86 65 86 C95 86 120 68 120 46 C120 22 95 5 65 5 Z"/>
-    <ellipse cx="44" cy="44" rx="10" ry="11" fill={white?"#0e0e0e":"#ffffff"}/>
-    <ellipse cx="86" cy="44" rx="10" ry="11" fill={white?"#0e0e0e":"#ffffff"}/>
-    <path d="M38 64 Q65 82 92 64" stroke={white?"#0e0e0e":"#ffffff"} strokeWidth="4.5" fill="none" strokeLinecap="round"/>
+// The two embedded logo images in this file were damaged, so the mask is now drawn
+// directly as an SVG. It can't fail to load and shows the same way on every page.
+const LogoMask = ({ size=24, variant="black", style={} }) => (
+  <svg height={size} width={size*1.24} viewBox="0 0 130 105" role="img" aria-label="Unmaskr" style={{ display:"block", flexShrink:0, ...style }}>
+    <defs>
+      <mask id="unmaskr-mask-cut">
+        <rect width="130" height="105" fill="#fff"/>
+        <ellipse cx="44" cy="44" rx="10" ry="11" fill="#000"/>
+        <ellipse cx="86" cy="44" rx="10" ry="11" fill="#000"/>
+        <path d="M38 64 Q65 82 92 64" stroke="#000" strokeWidth="4.5" fill="none" strokeLinecap="round"/>
+      </mask>
+    </defs>
+    <path mask="url(#unmaskr-mask-cut)" fill={variant==="white"?"#ffffff":"#0e0e0e"} d="M65 5 C35 5 10 22 10 46 C10 63 22 77 40 83 C38 91 30 99 20 103 C33 100 48 93 57 85 C59 86 62 86 65 86 C95 86 120 68 120 46 C120 22 95 5 65 5 Z"/>
   </svg>
 );
-const LogoMask = ({ size=24, variant="black", style={} }) => {
-  const [failed,setFailed] = useState(false);
-  const white = variant==="white";
-  if (failed) return <MaskFallback size={size} white={white} style={style}/>;
-  return <img src={white?logoMaskWhite:logoMaskBlack} alt="Unmaskr" onError={()=>setFailed(true)} style={{ height:size, width:"auto", display:"block", ...style }}/>;
-};
 // Composed from the mask icon + styled wordmark text (rather than a separate
 // full-lockup image file) — one less asset to keep in sync, and it can't go
 // stale/corrupt the way an embedded binary blob can.
