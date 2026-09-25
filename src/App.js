@@ -19,6 +19,16 @@ const LogoMask = ({ size=24, variant="black", style={} }) => (
   </svg>
 );
 
+// Composed from the mask icon + styled wordmark text (rather than a separate
+// full-lockup image file) — one less asset to keep in sync, and it can't go
+// stale/corrupt the way an embedded binary blob can.
+const LogoFull = ({ height=24, variant="black", style={} }) => (
+  <div style={{ display:"flex", alignItems:"center", gap:height*0.32, ...style }}>
+    <LogoMask size={height} variant={variant}/>
+    <span className="syne" style={{ fontSize:height*0.72, fontWeight:800, letterSpacing:"-0.02em", color:variant==="white"?"white":"#0e0e0e", lineHeight:1, whiteSpace:"nowrap" }}>unmaskr</span>
+  </div>
+);
+
 // ── LUCIDE-STYLE SVG ICONS ─────────────────────────────────────────────────────
 const Icon = ({ d, size=20, color="currentColor", strokeWidth=1.8 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
