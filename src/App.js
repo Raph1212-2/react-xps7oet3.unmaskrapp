@@ -370,7 +370,7 @@ const ALL_HINTS = [
 ];
 const getRandHints = (u=[]) => [...ALL_HINTS.filter(h=>!u.includes(h.key))].sort(()=>Math.random()-0.5).slice(0,3);
 // True only when the sender actually provided this specific piece of data.
-const isHintSpecified = (key, sd) => !!(sd && sd[key]);
+const isHintSpecified = (key, specified) => !!(specified && specified[key]);
 
 const TERMS = `TERMS AND CONDITIONS — UNMASKR\nLast updated: June 2025\n\n1. ACCEPTANCE\nBy using Unmaskr, you agree to these Terms.\n\n2. ELIGIBILITY\nYou must be at least 16 years old to use Unmaskr.\n\n3. ANONYMOUS MESSAGING\nUnmaskr allows anonymous messages. We may disclose sender info to law enforcement if messages contain threats or illegal content.\n\n4. HINT SYSTEM\nHints are based on general profile data voluntarily shared by senders. For entertainment only. When a hint is purchased, 50% goes to the message recipient's wallet. 50% is retained by Unmaskr. If the sender didn't provide the information behind a hint, it is shown for free and no payment is taken.\n\n5. PAYMENTS & REFUNDS\nAll hint payments are processed via Paystack. If a withdrawal or deposit fails due to a technical issue on our end, the full amount is automatically returned to your Unmaskr wallet within 10 minutes. Users are responsible for providing correct bank/airtime details.\n\n6. CONTENT MODERATION\nProfanity and offensive language is automatically filtered. Users who attempt to bypass filters using alternate spellings or abbreviations do so at their own risk and remain fully liable for their content. Unmaskr reserves the right to suspend accounts found violating these terms.\n\n7. SEXUAL CONTENT\nSexual language is strictly blocked for users under 18 years of age. This applies to all messages sent and received.\n\n8. PROHIBITED CONDUCT\nNo threatening, harassing, defamatory or illegal content. Violations may result in permanent account suspension.\n\n9. SAFETY\nReport harmful messages using the report button. Unmaskr reviews all reports promptly.\n\n10. PRIVACY\nWe collect only data necessary to operate the platform. We do not sell your data. Wallets never expire. Even if a wallet is unclaimed or abandoned for 5 years or more, the balance remains yours and can be claimed at any time.\n\n11. GAMES — STAKE & WIN\nThe 18+ staking game involves real money. You must be 18+ based on your registered date of birth. Winners receive the total pot. Maximum stake: equivalent of ₦1,000,000 in your local currency. Minimum 2, maximum 10 players. In the event of a dispute, an Unmaskr admin may review account activity to assist resolution.\n\n12. CHANGES\nWe may update these terms at any time.\n\n13. CONTACT\nsupport@unmaskr.com`;
 
@@ -805,7 +805,7 @@ const Landing = ({ goTo }) => {
         <Tag text="Games"/>
         <h2 className="syne" style={{fontSize:"clamp(1.9rem,4vw,2.9rem)",fontWeight:800,letterSpacing:"-0.02em",lineHeight:1.1,maxWidth:500}}>Play with friends</h2>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:20,marginTop:48}}>
-          {[{icon:<LogoMask size={32}/>,t:"Mystery Lobby",d:"Host shares a link. Players pick preferences. Guess what others picked or get eliminated!",b:"For everyone",bc:"#0e0e0e",c:"#f0efec"},{icon:<Icons.money size={32} color="white"/>,t:"Stake & Win",d:"Bet real money on trivia questions. Select topics and difficulty. Winner takes home the pot.",b:"18+ only",bc:"#ff5c3a",c:"#0e0e0e"}].map(g=>(
+          {[{icon:<LogoMask size={32}/>,t:"Mystery Lobby",d:"Host shares a link. Players pick preferences. Guess what others picked or get eliminated!",b:"For everyone",bc:"#0e0e0e",c:"#f0efec"},{icon:<Icons.trophy size={32} color="#ffcd3c"/>,t:"Quiz Clash",d:"Trivia questions across any topic and difficulty you pick. Highest score wins — bragging rights only.",b:"For everyone",bc:"#0e0e0e",c:"#0e0e0e"}].map(g=>(
             <div key={g.t} className="game-card" style={{background:g.c,borderRadius:20,padding:"32px 28px",transition:"all 0.2s",cursor:"pointer",border:g.c==="#0e0e0e"?"none":"1px solid rgba(0,0,0,0.06)"}} onClick={()=>goTo("signup")}>
               <div style={{width:56,height:56,borderRadius:16,background:g.bc==="#0e0e0e"?"#0e0e0e":"rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>{g.icon}</div>
               <div style={{display:"inline-block",background:g.bc,color:"white",fontSize:"0.7rem",fontWeight:700,padding:"4px 12px",borderRadius:50,marginBottom:14}}>{g.b}</div>
@@ -1216,8 +1216,10 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
   const fetchMessages = () => {
     if (!userId) { setLoadingMsgs(false); return; }
     setLoadingMsgs(true);
-    supabase.from("messages").select("*, message_replies(*)").eq("recipient_id", userId)
-      .order("created_at", { ascending: false })
+    // Runs through the database's get_inbox_messages() function instead of a raw
+    // select — the database itself withholds sender_email/age/name/gender for any
+    // hint you haven't paid for, so there's nothing sensitive to intercept anymore.
+    supabase.rpc("get_inbox_messages")
       .then(({ data }) => {
         if (data) setMessages(data.map(m => ({
           id: m.id,
@@ -1227,9 +1229,10 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
           hints: m.hints_unlocked || [],
           hintTexts: m.hint_texts || {},
           reactions: m.reactions || [],
-          replies: (m.message_replies||[]).map(r=>r.text),
-          sd: { gender: m.sender_gender, birth: m.sender_birth_period, age: m.sender_age, name: m.sender_name },
-          senderEmail: m.sender_email || "",
+          replies: m.replies || [],
+          sd: m.sd || {},
+          specified: m.specified || {},
+          hasSenderEmail: !!m.has_email,
         })));
         setLoadingMsgs(false);
       });
@@ -1264,74 +1267,42 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
     if (unlocking || !userId) return;
     setUnlocking(true);
     setUnlockError("");
-    const updated = [...activeMsg.hints,h.key];
-    const specified = isHintSpecified(h.key, activeMsg.sd);
 
-    // The sender never provided this piece of data — reveal it for free,
-    // no wallet debit and no transaction of any kind.
-    if (!specified) {
-      await supabase.from("messages").update({ hints_unlocked: updated }).eq("id", activeMsg.id);
-      setActiveMsg(m=>({...m,hints:updated}));
-      setMessages(ms=>ms.map(m=>m.id===activeMsg.id?{...m,hints:updated}:m));
-      setActiveHints(getRandHints(updated));
+    // The ENTIRE purchase — checking you haven't already unlocked it, working out
+    // the price, debiting your wallet, crediting the sender's, and recording both
+    // transactions — happens inside one database function now. The browser only
+    // ever says which hint on which message; it can no longer decide an amount or
+    // credit a wallet directly, and a double-tap can't charge you twice because the
+    // database itself rejects a hint that's already unlocked before touching money.
+    const { data, error } = await supabase.rpc("purchase_hint", {
+      p_message_id: activeMsg.id,
+      p_hint_key: h.key,
+      p_tier_index: idx,
+    });
+
+    if (error) {
       setUnlocking(false);
-      return;
-    }
-
-    const price = cur.hints[idx] || cur.hints[1];
-
-    // 1. Debit the unlocking user's wallet — atomic: the database checks the
-    // balance and deducts in one step, so it can never go negative even if
-    // this fires twice in quick succession (e.g. a double-click or a script).
-    const { error: spendError } = await supabase.rpc("spend_from_wallet", { p_user_id: userId, p_amount: price });
-    if (spendError) {
-      setUnlocking(false);
-      if (spendError.message?.includes("insufficient_funds")) setUnlockError("Not enough wallet balance for this hint. Top up your wallet to continue.");
-      else if (spendError.message?.includes("rate_limited")) setUnlockError("You're unlocking hints a little too fast — give it a minute and try again.");
+      if (error.message?.includes("insufficient_funds")) setUnlockError("Not enough wallet balance for this hint. Top up your wallet to continue.");
+      else if (error.message?.includes("already_unlocked")) setUnlockError("You've already unlocked this hint.");
+      else if (error.message?.includes("rate_limited")) setUnlockError("You're unlocking hints a little too fast — give it a minute and try again.");
       else setUnlockError("Couldn't unlock this hint. Please try again.");
       return;
     }
 
-    // 2. Credit the message sender's wallet with their 50% share, if they have an
-    // Unmaskr account tied to the email they sent from
-    if (activeMsg.senderEmail) {
-      const { data: senderProfile } = await supabase.from("profiles").select("id").eq("email", activeMsg.senderEmail).maybeSingle();
-      if (senderProfile) {
-        await supabase.rpc("add_to_wallet", { p_user_id: senderProfile.id, p_amount: price*0.5 });
-        // Record the earning itself — without this row, the sender's own wallet
-        // history and the admin "Earned" column have no way to show where the
-        // money came from, and the new-earning notification has nothing to fire on.
-        await supabase.from("transactions").insert({
-          user_id: senderProfile.id, type: "hint_earning", amount: price*0.5, currency: cur.code, status: "completed",
-        });
-      }
-    }
-
-    // 3. Record the transaction
-    const { error: txError } = await supabase.from("transactions").insert({
-      user_id: userId, type: "hint_purchase", amount: price, currency: cur.code, status: "completed",
-    });
-    if (txError) {
-      // Extremely rare: spend succeeded but the log insert was rejected (e.g. rate limit
-      // tripped between the two calls). Refund immediately so the user isn't shortchanged.
-      await supabase.rpc("add_to_wallet", { p_user_id: userId, p_amount: price });
-      setUnlocking(false);
-      setUnlockError("Couldn't complete this purchase — your balance has been refunded, please try again.");
-      return;
-    }
-
-    // 4. Mark the hint unlocked, and lock in the generated hint text itself —
-    // several hints are randomized (a range, one of a few clue phrasings), so
-    // this is computed once, here, and stored rather than recomputed on every
-    // render (which would make the reveal drift each time the message is reopened).
-    const revealText = h.result(activeMsg.sd[h.key]);
+    const updated = [...activeMsg.hints, h.key];
+    // The reveal text itself (a random range/phrasing) is cosmetic, not money, so
+    // it's still generated here and saved as a normal update — the database has
+    // already confirmed above that this hint is genuinely unlocked before we do this.
+    const revealText = data?.charged ? h.result(data.value) : h.unspecified;
     const updatedTexts = { ...activeMsg.hintTexts, [h.key]: revealText };
-    await supabase.from("messages").update({ hints_unlocked: updated, hint_texts: updatedTexts }).eq("id", activeMsg.id);
+    await supabase.from("messages").update({ hint_texts: updatedTexts }).eq("id", activeMsg.id);
 
     setActiveMsg(m=>({...m,hints:updated,hintTexts:updatedTexts}));
     setMessages(ms=>ms.map(m=>m.id===activeMsg.id?{...m,hints:updated,hintTexts:updatedTexts}:m));
     setActiveHints(getRandHints(updated));
-    setReceipt({label:h.label, price:`${cur.symbol}${price}`, senderShare:`${cur.symbol}${(price*0.5).toFixed(2)}`, platformFee:`${cur.symbol}${(price*0.5).toFixed(2)}`});
+    if (data?.charged) {
+      setReceipt({label:h.label, price:`${cur.symbol}${data.price}`, senderShare:`${cur.symbol}${(data.price*0.5).toFixed(2)}`, platformFee:`${cur.symbol}${(data.price*0.5).toFixed(2)}`});
+    }
     setUnlocking(false);
   };
 
@@ -1445,7 +1416,7 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
           {activeMsg.hints.length>0&&(
             <div style={{marginBottom:16,display:"flex",flexDirection:"column",gap:8}}>
               {activeHints.filter(h=>activeMsg.hints.includes(h.key)).map(h=>{
-                const specified = isHintSpecified(h.key, activeMsg.sd);
+                const specified = isHintSpecified(h.key, activeMsg.specified);
                 return (
                   <div key={h.key} style={{padding:"12px 16px",borderRadius:12,background:"#f0efec",fontSize:"0.88rem",color:"#555",display:"flex",gap:10,alignItems:"center"}}>
                     <Icons.unlock s={14} c="#ff5c3a"/>{specified ? (activeMsg.hintTexts?.[h.key] || h.result(activeMsg.sd[h.key])) : h.unspecified}
@@ -1483,7 +1454,7 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
                     ?<div style={{padding:"16px",background:"#f0efec",borderRadius:12,textAlign:"center",fontSize:"0.88rem",color:"#888",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><Icons.check s={16} c="#16a34a"/>All available hints unlocked!</div>
                     :activeHints.map((h,idx)=>{
                       const unlocked = activeMsg.hints.includes(h.key);
-                      const specified = isHintSpecified(h.key, activeMsg.sd);
+                      const specified = isHintSpecified(h.key, activeMsg.specified);
                       const price = cur.hints[Math.min(idx,cur.hints.length-1)];
                       return (<div key={h.key}>
                         {unlocked
@@ -1760,6 +1731,7 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
   const [receipt,setReceipt] = useState(null);
   const [filter,setFilter] = useState("all");
   const [submitting,setSubmitting] = useState(false);
+  const [withdrawError,setWithdrawError] = useState("");
   const [balance,setBalance] = useState(0);
   const [txns,setTxns] = useState([]);
   const [loading,setLoading] = useState(true);
@@ -1788,13 +1760,23 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
   const finishWithdraw = async () => {
     if (!userId || submitting) return;
     setSubmitting(true);
-    const ref = makeRef();
-    await supabase.from("transactions").insert({
-      user_id: userId, type: "withdrawal", amount: Number(amount), currency: cur.code,
-      status: "pending", reference: ref,
-      bank_name: wMethod==="bank" ? bankName : "Airtime", account_number: wMethod==="bank" ? acct : phone, account_name: acctName,
+    setWithdrawError("");
+    // Debits the wallet and records the pending request as one step in the
+    // database — the balance is held the moment you ask, not later when an
+    // admin gets to it, so you can never request more than you actually have,
+    // even across two requests submitted close together.
+    const { data: txnId, error } = await supabase.rpc("request_withdrawal", {
+      p_amount: Number(amount),
+      p_currency: cur.code,
+      p_bank_name: wMethod==="bank" ? bankName : "Airtime",
+      p_account_number: wMethod==="bank" ? acct : phone,
+      p_account_name: acctName,
     });
     setSubmitting(false);
+    if (error) {
+      setWithdrawError(error.message?.includes("insufficient_funds") ? "Your wallet balance is lower than this amount." : "Couldn't submit your withdrawal — please try again.");
+      return;
+    }
     setDone(true);
     setReceipt({
       title:"Withdrawal Receipt",
@@ -1802,7 +1784,7 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
         ["Amount",`${cur.symbol}${amount}`],
         ["Method",wMethod==="airtime"?"Airtime":"Bank Transfer"],
         ["Status","Pending admin approval"],
-        ["Reference",ref],
+        ["Reference",txnId],
         ["Note","Your admin reviews and approves withdrawals — you'll be emailed once it's paid."],
       ]
     });
@@ -1956,6 +1938,7 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
               <Btn onClick={finishWithdraw} style={{width:"100%",marginTop:20,padding:"15px"}} disabled={!amount||Number(amount)<100||Number(amount)>balance||!wMethod||(wMethod==="bank"&&(!acct||!bankName))||(wMethod==="airtime"&&!phone)||submitting}>
                 <Icons.withdraw s={16} c="white"/>{submitting?"Submitting...":(wMethod==="airtime"?"Withdraw as airtime":"Request withdrawal")}
               </Btn>
+              {withdrawError && <p style={{marginTop:12,padding:"10px 14px",background:"#fff5f5",border:"1px solid #fca5a5",borderRadius:10,fontSize:"0.8rem",color:"#ef4444"}}>{withdrawError}</p>}
             </>}
           </div>
         )}
@@ -2022,10 +2005,11 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
   );
 };
 // ── GAMES ──────────────────────────────────────────────────────────────────────
-// NOTE: Mystery Lobby and Stake & Win below are still fully simulated — no real
-// multiplayer backend exists yet (no games/sessions table). Left as-is per the
-// agreed plan; revisit once that backend design is scoped out.
-const Games = ({ goTo, mysteryFrozen=false, stakeFrozen=false, userId }) => (
+// NOTE: Mystery Lobby below is still fully simulated — no real multiplayer
+// backend exists yet (no games/sessions table). Left as-is per the agreed
+// plan; revisit once that backend design is scoped out. (Quiz Clash below it
+// DOES use real Supabase tables/realtime — only Mystery Lobby is the mock.)
+const Games = ({ goTo, mysteryFrozen=false, quizFrozen=false, userId }) => (
   <div style={{minHeight:"100vh",background:"#fafaf8"}}>
     <AppNav goTo={goTo} active="games" userId={userId}/>
     <div style={{maxWidth:700,margin:"0 auto",padding:"40px 24px"}}>
@@ -2046,14 +2030,14 @@ const Games = ({ goTo, mysteryFrozen=false, stakeFrozen=false, userId }) => (
           </div>
           <Icons.chevron s={20} c="#ccc"/>
         </div>
-        <div className="game-card fadeUp2" onClick={()=>!stakeFrozen&&goTo("game-stake")} style={{background:"#0e0e0e",borderRadius:20,padding:"28px 24px",cursor:stakeFrozen?"not-allowed":"pointer",opacity:stakeFrozen?0.5:1,transition:"all 0.2s",display:"flex",gap:20,alignItems:"center"}}>
+        <div className="game-card fadeUp2" onClick={()=>!quizFrozen&&goTo("game-quiz")} style={{background:"#0e0e0e",borderRadius:20,padding:"28px 24px",cursor:quizFrozen?"not-allowed":"pointer",opacity:quizFrozen?0.5:1,transition:"all 0.2s",display:"flex",gap:20,alignItems:"center"}}>
           <div style={{width:64,height:64,borderRadius:18,background:"rgba(255,205,60,0.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icons.trophy s={32} c="#ffcd3c"/></div>
           <div style={{flex:1}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
-              <h3 className="syne" style={{fontSize:"1.1rem",fontWeight:800,color:"white"}}>Stake & Win</h3>
-              <span style={{background:stakeFrozen?"#888":"#ff5c3a",color:"white",fontSize:"0.68rem",fontWeight:700,padding:"3px 10px",borderRadius:50}}>{stakeFrozen?"Paused":"18+ only"}</span>
+              <h3 className="syne" style={{fontSize:"1.1rem",fontWeight:800,color:"white"}}>Quiz Clash</h3>
+              <span style={{background:quizFrozen?"#888":"#0e0e0e",color:"white",fontSize:"0.68rem",fontWeight:700,padding:"3px 10px",borderRadius:50}}>{quizFrozen?"Paused":"For everyone"}</span>
             </div>
-            <p style={{fontSize:"0.88rem",color:"rgba(255,255,255,0.55)",lineHeight:1.6,fontWeight:300}}>{stakeFrozen?"Temporarily unavailable — check back soon.":"Pick topics, difficulty and question count. Bet real money. Winner takes the pot."}</p>
+            <p style={{fontSize:"0.88rem",color:"rgba(255,255,255,0.55)",lineHeight:1.6,fontWeight:300}}>{quizFrozen?"Temporarily unavailable — check back soon.":"Pick topics, difficulty and question count. Highest score wins — bragging rights only."}</p>
           </div>
           <Icons.chevron s={20} c="rgba(255,255,255,0.3)"/>
         </div>
@@ -2487,14 +2471,14 @@ const GameLobby = ({ goTo, frozen=false, joinCode, userId, userName }) => {
 // ── STAKE & WIN (still simulated) ──────────────────────────────────────────────
 const makeStakeLobbyCode = () => "STAKE-"+Math.floor(1000+Math.random()*9000);
 
-const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, userName }) => {
-  const cur = currency || CURRENCIES.NG;
+const makeQuizLobbyCode = () => "QUIZ-"+Math.floor(1000+Math.random()*9000);
 
+const GameQuiz = ({ goTo, frozen=false, joinCode, userId, userName }) => {
   if (frozen) return (
     <div style={{minHeight:"100vh",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
       <div style={{maxWidth:380}}>
         <Icons.trophy s={48} c="#ffcd3c"/>
-        <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,color:"white",marginTop:20,marginBottom:12}}>Stake & Win paused</h2>
+        <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,color:"white",marginTop:20,marginBottom:12}}>Quiz Clash paused</h2>
         <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",lineHeight:1.7,marginBottom:24,fontWeight:300}}>This game is temporarily unavailable. Check back soon.</p>
         <Btn onClick={()=>goTo("games")} style={{width:"100%",background:"#ff5c3a"}}>Back to games</Btn>
       </div>
@@ -2502,11 +2486,7 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
   );
 
   const guestTokenRef = useRef(userId ? null : getGuestToken());
-  const [phase,setPhase] = useState(joinCode ? "join" : "mode"); // mode -> setup -> lobby -> playing -> result
-  const [mode,setMode] = useState(null); // 'free' | 'stake'
-  const [selfAttested,setSelfAttested] = useState(false);
-  const ageKnownAdult = is18Plus===true || selfAttested;
-
+  const [phase,setPhase] = useState(joinCode ? "join" : "setup");
   const [guestName,setGuestName] = useState(userName || "");
   const [session,setSession] = useState(null);
   const [myPlayer,setMyPlayer] = useState(null);
@@ -2514,12 +2494,10 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
   const [error,setError] = useState("");
   const [loading,setLoading] = useState(false);
   const [lobbyCopied,setLobbyCopied] = useState(false);
-  const [walletBalance,setWalletBalance] = useState(0);
 
   const [selectedTopics,setSelectedTopics] = useState([]);
   const [difficulty,setDifficulty] = useState("medium");
   const [questionCount,setQuestionCount] = useState(10);
-  const [stakeAmount,setStakeAmount] = useState("");
   const [expectedPlayers,setExpectedPlayers] = useState(3);
 
   const [myQuestions,setMyQuestions] = useState([]);
@@ -2527,13 +2505,6 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
   const [myScore,setMyScore] = useState(0);
   const [answered,setAnswered] = useState(null);
   const [showAnswer,setShowAnswer] = useState(false);
-  const [tieChoice,setTieChoice] = useState(null);
-
-  useEffect(() => {
-    if (userId) {
-      supabase.from("wallets").select("balance").eq("user_id", userId).single().then(({data})=>{ if(data) setWalletBalance(Number(data.balance)); });
-    }
-  }, [userId]);
 
   const fetchPlayers = async (sessionId) => {
     const { data } = await supabase.from("game_players").select("*").eq("session_id", sessionId).order("joined_at");
@@ -2548,16 +2519,15 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
     setLoading(false);
     if (e || !data) { setError("This lobby doesn't exist or has ended."); return; }
     setSession(data);
-    setMode(data.stake_amount>0 ? "stake" : "free");
     fetchPlayers(data.id);
-    if (data.status === "playing") setPhase("playing");
+    if (data.status === "playing") { setMyQuestions(data.questions || []); setPhase("playing"); }
     else if (data.status === "finished") setPhase("result");
+    else setPhase("join");
   };
 
-  // Realtime sync
   useEffect(() => {
     if (!session?.id) return;
-    const channel = supabase.channel(`stake-${session.id}`)
+    const channel = supabase.channel(`quiz-${session.id}`)
       .on('postgres_changes', { event:'*', schema:'public', table:'game_players', filter:`session_id=eq.${session.id}` }, () => fetchPlayers(session.id))
       .on('postgres_changes', { event:'UPDATE', schema:'public', table:'game_sessions', filter:`id=eq.${session.id}` }, (payload) => {
         setSession(payload.new);
@@ -2573,41 +2543,19 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
 
   const toggleTopic = key => setSelectedTopics(t=>t.includes(key)?t.filter(k=>k!==key):[...t,key]);
 
-  const goToSetup = (chosenMode) => {
-    setMode(chosenMode);
-    setPhase("setup");
-  };
-
   const createLobby = async () => {
     const name = userName || guestName.trim();
     if (!name) { setError("Enter your name"); return; }
-    if (mode==="stake" && !userId) { setError("You need to be logged in to stake real money."); return; }
-    if (mode==="stake" && Number(stakeAmount) > walletBalance) { setError("Your wallet balance is lower than the stake amount."); return; }
     setError(""); setLoading(true);
-    const code = makeStakeLobbyCode();
+    const code = makeQuizLobbyCode();
     const { data: newSession, error: sErr } = await supabase.from("game_sessions").insert({
       lobby_code: code, game_type:"stake_win", host_user_id: userId||null, host_name: name, max_players: expectedPlayers,
-      stake_amount: mode==="stake" ? Number(stakeAmount) : 0, currency: cur.code,
-      topics: selectedTopics, difficulty, question_count: questionCount,
+      stake_amount: 0, topics: selectedTopics, difficulty, question_count: questionCount,
     }).select().single();
     if (sErr) { setError(sErr.message); setLoading(false); return; }
 
-    if (mode==="stake") {
-      // Debit the host's own stake atomically — the database re-checks the real
-      // balance and rejects if insufficient, instead of trusting a possibly-stale
-      // client-side walletBalance value.
-      const { error: spendErr } = await supabase.rpc("spend_from_wallet", { p_user_id: userId, p_amount: Number(stakeAmount) });
-      if (spendErr) {
-        await supabase.from("game_sessions").delete().eq("id", newSession.id);
-        setLoading(false);
-        setError(spendErr.message?.includes("insufficient_funds") ? "Your wallet balance is lower than the stake amount." : "Couldn't process your stake — please try again.");
-        return;
-      }
-      await supabase.from("transactions").insert({ user_id:userId, type:"stake_win", amount:Number(stakeAmount), currency:cur.code, status:"completed" });
-    }
-
     const { data: hostPlayer } = await supabase.from("game_players").insert({
-      session_id:newSession.id, user_id:userId||null, guest_token:guestTokenRef.current, display_name:name, is_host:true, stake_paid: mode==="stake",
+      session_id:newSession.id, user_id:userId||null, guest_token:guestTokenRef.current, display_name:name, is_host:true,
     }).select().single();
 
     setSession(newSession); setMyPlayer(hostPlayer);
@@ -2618,22 +2566,9 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
   const joinLobby = async () => {
     const name = userName || guestName.trim();
     if (!name) { setError("Enter your name"); return; }
-    if (mode==="stake" && !userId) { setError("You need an Unmaskr account to join a real-money game — free games don't require one."); return; }
-    if (mode==="stake" && Number(session.stake_amount) > walletBalance) { setError(`You need at least ${cur.symbol}${session.stake_amount} in your wallet to join.`); return; }
     setError(""); setLoading(true);
-
-    if (mode==="stake") {
-      const { error: spendErr } = await supabase.rpc("spend_from_wallet", { p_user_id: userId, p_amount: Number(session.stake_amount) });
-      if (spendErr) {
-        setLoading(false);
-        setError(spendErr.message?.includes("insufficient_funds") ? `You need at least ${cur.symbol}${session.stake_amount} in your wallet to join.` : "Couldn't process your stake — please try again.");
-        return;
-      }
-      await supabase.from("transactions").insert({ user_id:userId, type:"stake_win", amount:Number(session.stake_amount), currency:session.currency, status:"completed" });
-    }
-
     const { data: player, error: jErr } = await supabase.from("game_players").insert({
-      session_id:session.id, user_id:userId||null, guest_token:guestTokenRef.current, display_name:name, is_host:false, stake_paid: mode==="stake",
+      session_id:session.id, user_id:userId||null, guest_token:guestTokenRef.current, display_name:name, is_host:false,
     }).select().single();
     setLoading(false);
     if (jErr) { setError(jErr.message); return; }
@@ -2659,12 +2594,10 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
 
   const nextQuestion = async () => {
     if (qIndex === myQuestions.length-1) {
-      // I'm done — record my final score
-      await supabase.from("game_players").update({ score: myScore + (answered===myQuestions[qIndex]?.a?0:0), ready:true }).eq("id", myPlayer.id);
-      // Check if everyone else is also done; if so, end the game
+      await supabase.from("game_players").update({ score: myScore, ready:true }).eq("id", myPlayer.id);
       const { data: fresh } = await supabase.from("game_players").select("*").eq("session_id", session.id);
       if (fresh && fresh.every(p=>p.ready)) {
-        await finishGame(fresh);
+        await finishGame();
       } else {
         fetchPlayers(session.id);
         setPhase("waiting-others");
@@ -2674,202 +2607,110 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
     }
   };
 
-  const finishGame = async (finalPlayers) => {
-    const sorted = [...finalPlayers].sort((a,b)=>(b.score||0)-(a.score||0));
-    const top = sorted[0]?.score||0;
-    const tied = sorted.filter(p=>p.score===top);
-    // No platform fee on Stake & Win — the whole pot goes to the winner(s).
-    if (session.stake_amount > 0) {
-      const pot = Number(session.stake_amount) * finalPlayers.length;
-      const share = pot / tied.length;
-      for (const winner of tied) {
-        if (winner.user_id) {
-          await supabase.rpc("add_to_wallet", { p_user_id: winner.user_id, p_amount: share });
-          await supabase.from("transactions").insert({ user_id:winner.user_id, type:"stake_win_payout", amount:share, currency:session.currency, status:"completed" });
-        }
-      }
-    }
-    await supabase.from("game_sessions").update({ status:"finished" }).eq("id", session.id);
+  // Marks the session finished exactly once, no matter how many players'
+  // phones call this at the same moment — see settle_stake_game in the
+  // database. Since this session's stake_amount is always 0 now, its payout
+  // step is a no-op; only the "mark finished, exactly once" part matters here.
+  const finishGame = async () => {
+    await supabase.rpc("settle_stake_game", { p_session_id: session.id });
     fetchPlayers(session.id);
     setPhase("result");
   };
 
-  // Poll for other players finishing while I wait
   useEffect(() => {
     if (phase !== "waiting-others" || !session) return;
     const interval = setInterval(async () => {
       const { data: fresh } = await supabase.from("game_players").select("*").eq("session_id", session.id);
       if (fresh) {
         setPlayers(fresh);
-        if (fresh.every(p=>p.ready)) { clearInterval(interval); await finishGame(fresh); }
+        if (fresh.every(p=>p.ready)) { clearInterval(interval); await finishGame(); }
       }
     }, 3000);
     return () => clearInterval(interval);
   }, [phase, session]);
 
-  const shareLink = `${window.location.origin}/join-stake/${session?.lobby_code}`;
+  const shareLink = `${window.location.origin}/join-quiz/${session?.lobby_code}`;
 
-  // ── JOIN (arrived via link) ────────────────────────────────────────────
+  // ── JOIN (arrived via link) ──────────────────────────────────────────
   if (phase==="join") return (
     <div style={{minHeight:"100vh",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px"}}>
       <div className="popIn" style={{width:"100%",maxWidth:400,textAlign:"center"}}>
         <Icons.trophy s={44} c="#ffcd3c"/>
-        <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,color:"white",marginTop:16,marginBottom:8}}>Join Stake & Win</h2>
+        <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,color:"white",marginTop:16,marginBottom:8}}>Join Quiz Clash</h2>
         {loading && <p style={{color:"rgba(255,255,255,0.5)"}}>Loading...</p>}
         {error && <p style={{color:"#ff5c3a",fontSize:"0.85rem",marginBottom:16}}>{error}</p>}
         {session && !error && (
-          mode==="stake" && !ageKnownAdult ? (
-            is18Plus===false ? (
-              <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",lineHeight:1.7}}>This is a real-money game — you must be 18+ to join.</p>
-            ) : (
-              <>
-                <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",lineHeight:1.7,marginBottom:20}}>This game involves staking {cur.symbol}{session.stake_amount} of real money.</p>
-                <Btn onClick={()=>setSelfAttested(true)} style={{width:"100%",background:"#ff5c3a"}}>I am 18+</Btn>
-              </>
-            )
-          ) : (
-            <>
-              <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",marginBottom:20,fontWeight:300}}>
-                Hosted by <strong style={{color:"white"}}>{session.host_name}</strong> · {mode==="stake" ? `Stake: ${cur.symbol}${session.stake_amount}` : "Free to play"}
-              </p>
-              {!userName && mode==="free" && <Inp placeholder="Your name" value={guestName} onChange={e=>setGuestName(e.target.value)} style={{marginBottom:12}}/>}
-              {mode==="stake" && !userId && <p style={{color:"#ff5c3a",fontSize:"0.82rem",marginBottom:16}}>You need an Unmaskr account to join a real-money game.</p>}
-              <Btn onClick={joinLobby} style={{width:"100%",background:"#ff5c3a"}} disabled={loading || (mode==="stake" && !userId)}>Join lobby</Btn>
-            </>
-          )
+          <>
+            <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",marginBottom:20,fontWeight:300}}>Hosted by <strong style={{color:"white"}}>{session.host_name}</strong> — free to play.</p>
+            {!userName && <Inp placeholder="Your name" value={guestName} onChange={e=>setGuestName(e.target.value)} style={{marginBottom:12}}/>}
+            <Btn onClick={joinLobby} style={{width:"100%",background:"#ff5c3a"}} disabled={loading}>Join lobby</Btn>
+          </>
         )}
       </div>
     </div>
   );
 
-  // ── MODE selection (host, brand new game) ──────────────────────────────
-  if (phase==="mode") return (
+  // ── SETUP (host configures the game) ─────────────────────────────────
+  if (phase==="setup") return (
     <div style={{minHeight:"100vh",background:"#fafaf8"}}>
       <div style={{padding:"20px 28px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-        <BackBtn onClick={()=>goTo("games")}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Stake & Win</span>
+        <BackBtn onClick={()=>goTo("games")}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Quiz Clash</span>
       </div>
-      <div style={{maxWidth:480,margin:"0 auto",padding:"48px 24px",textAlign:"center"}}>
-        <Icons.trophy s={48} c="#ffcd3c"/>
-        <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginTop:16,marginBottom:28}}>How do you want to play?</h2>
-        <div style={{display:"flex",flexDirection:"column",gap:14}}>
-          <button onClick={()=>goToSetup("free")} style={{padding:"22px",borderRadius:18,border:"1.5px solid rgba(0,0,0,0.1)",background:"white",cursor:"pointer",textAlign:"left"}}>
-            <p className="syne" style={{fontWeight:800,fontSize:"1.05rem",marginBottom:6}}>Free play</p>
-            <p style={{fontSize:"0.85rem",color:"#888",fontWeight:300}}>No money involved — just for fun and bragging rights. Anyone can join, no account needed.</p>
-          </button>
-          <button onClick={()=>goToSetup("stake")} style={{padding:"22px",borderRadius:18,border:"1.5px solid #ff5c3a",background:"#fff8f0",cursor:"pointer",textAlign:"left"}}>
-            <p className="syne" style={{fontWeight:800,fontSize:"1.05rem",marginBottom:6}}>Stake real money <span style={{background:"#ff5c3a",color:"white",fontSize:"0.65rem",fontWeight:700,padding:"3px 8px",borderRadius:50,marginLeft:6}}>18+</span></p>
-            <p style={{fontSize:"0.85rem",color:"#888",fontWeight:300}}>Everyone stakes the same amount. Winner takes the pot. Requires an account and 18+.</p>
-          </button>
+      <div style={{maxWidth:520,margin:"0 auto",padding:"32px 24px"}}>
+        {!userName && (
+          <div style={{marginBottom:20}}>
+            <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:10}}>Your name</label>
+            <Inp value={guestName} onChange={e=>setGuestName(e.target.value)}/>
+          </div>
+        )}
+
+        <div style={{marginBottom:24}}>
+          <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Max players</label>
+          <div style={{display:"flex",alignItems:"center",gap:14}}>
+            <button onClick={()=>setExpectedPlayers(n=>Math.max(2,n-1))} style={{width:40,height:40,borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",cursor:"pointer"}}><Icons.close s={16} c="#555"/></button>
+            <span className="syne" style={{fontSize:"1.5rem",fontWeight:800,minWidth:30,textAlign:"center"}}>{expectedPlayers}</span>
+            <button onClick={()=>setExpectedPlayers(n=>Math.min(10,n+1))} style={{width:40,height:40,borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",cursor:"pointer"}}><Icons.plus s={16} c="#555"/></button>
+          </div>
         </div>
+
+        <div style={{marginBottom:24}}>
+          <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Topics</label>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {TRIVIA_TOPICS.map(t=>{
+              const sel = selectedTopics.includes(t.key);
+              return <button key={t.key} onClick={()=>toggleTopic(t.key)} style={{padding:"8px 14px",borderRadius:50,fontSize:"0.8rem",border:`1.5px solid ${sel?"#0e0e0e":"rgba(0,0,0,0.12)"}`,background:sel?"#0e0e0e":"white",color:sel?"white":"#555",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}><t.icon/>{t.label}</button>;
+            })}
+          </div>
+          {selectedTopics.length===0&&<p style={{fontSize:"0.78rem",color:"#aaa",marginTop:8}}>No topics selected = mix of all topics</p>}
+        </div>
+
+        <div style={{marginBottom:24}}>
+          <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Difficulty</label>
+          <div style={{display:"flex",gap:8}}>
+            {[{k:"easy",l:"Easy"},{k:"medium",l:"Medium"},{k:"hard",l:"Hard"},{k:"mix",l:"Mix"}].map(d=>(
+              <button key={d.k} onClick={()=>setDifficulty(d.k)} style={{flex:1,padding:"10px",borderRadius:12,border:`1.5px solid ${difficulty===d.k?"#0e0e0e":"rgba(0,0,0,0.1)"}`,background:difficulty===d.k?"#0e0e0e":"white",color:difficulty===d.k?"white":"#555",cursor:"pointer",fontSize:"0.83rem",fontWeight:600}}>{d.l}</button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{marginBottom:24}}>
+          <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Number of questions</label>
+          <div style={{display:"flex",gap:8}}>
+            {[5,10,15,20].map(n=>(
+              <button key={n} onClick={()=>setQuestionCount(n)} style={{flex:1,padding:"10px",borderRadius:12,border:`1.5px solid ${questionCount===n?"#0e0e0e":"rgba(0,0,0,0.1)"}`,background:questionCount===n?"#0e0e0e":"white",color:questionCount===n?"white":"#555",cursor:"pointer",fontSize:"0.9rem",fontWeight:700}}>{n}</button>
+            ))}
+          </div>
+        </div>
+
+        {error && <p style={{color:"#ef4444",fontSize:"0.85rem",marginBottom:12}}>{error}</p>}
+        <Btn onClick={createLobby} style={{width:"100%",padding:"15px"}} disabled={loading}>
+          <Icons.share s={18} c="white"/>{loading?"Creating...":"Create Lobby & Invite"}
+        </Btn>
       </div>
     </div>
   );
 
-  // ── SETUP (host configures the game) ────────────────────────────────────
-  if (phase==="setup") {
-    if (mode==="stake" && !ageKnownAdult) {
-      if (is18Plus===false) return (
-        <div style={{minHeight:"100vh",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
-          <div style={{maxWidth:380}}>
-            <Icons.lock s={28} c="#ff5c3a"/>
-            <h2 className="syne" style={{fontSize:"1.8rem",fontWeight:800,color:"white",marginTop:20,marginBottom:12}}>18+ Only</h2>
-            <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",lineHeight:1.7,marginBottom:32,fontWeight:300}}>Staking real money is only available once you turn 18.</p>
-            <Btn onClick={()=>goTo("games")} style={{width:"100%",background:"#ff5c3a"}}>Back to games</Btn>
-          </div>
-        </div>
-      );
-      return (
-        <div style={{minHeight:"100vh",background:"#0e0e0e",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px"}}>
-          <div className="popIn" style={{maxWidth:400,textAlign:"center"}}>
-            <Icons.lock s={28} c="#ff5c3a"/>
-            <h2 className="syne" style={{fontSize:"1.8rem",fontWeight:800,color:"white",marginTop:20,marginBottom:12}}>18+ Only</h2>
-            <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.9rem",lineHeight:1.7,marginBottom:32,fontWeight:300}}>Stake & Win involves real money. Highest score wins the pot.</p>
-            <div style={{display:"flex",gap:12}}>
-              <Btn outline onClick={()=>setPhase("mode")} style={{flex:1,color:"white",borderColor:"rgba(255,255,255,0.2)"}}>Go back</Btn>
-              <Btn onClick={()=>setSelfAttested(true)} style={{flex:1,background:"#ff5c3a"}}>I am 18+</Btn>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div style={{minHeight:"100vh",background:"#fafaf8"}}>
-        <div style={{padding:"20px 28px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-          <BackBtn onClick={()=>setPhase("mode")}/><span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Stake & Win</span>
-          {mode==="stake" && <span style={{background:"#ff5c3a",color:"white",fontSize:"0.68rem",fontWeight:700,padding:"3px 10px",borderRadius:50}}>18+</span>}
-        </div>
-        <div style={{maxWidth:520,margin:"0 auto",padding:"32px 24px"}}>
-          {!userName && (
-            <div style={{marginBottom:20}}>
-              <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:10}}>Your name</label>
-              <Inp value={guestName} onChange={e=>setGuestName(e.target.value)}/>
-            </div>
-          )}
-
-          <div style={{marginBottom:24}}>
-            <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Max players</label>
-            <div style={{display:"flex",alignItems:"center",gap:14}}>
-              <button onClick={()=>setExpectedPlayers(n=>Math.max(2,n-1))} style={{width:40,height:40,borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",cursor:"pointer"}}><Icons.close s={16} c="#555"/></button>
-              <span className="syne" style={{fontSize:"1.5rem",fontWeight:800,minWidth:30,textAlign:"center"}}>{expectedPlayers}</span>
-              <button onClick={()=>setExpectedPlayers(n=>Math.min(10,n+1))} style={{width:40,height:40,borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",cursor:"pointer"}}><Icons.plus s={16} c="#555"/></button>
-            </div>
-          </div>
-
-          <div style={{marginBottom:24}}>
-            <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Topics</label>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-              {TRIVIA_TOPICS.map(t=>{
-                const sel = selectedTopics.includes(t.key);
-                return <button key={t.key} onClick={()=>toggleTopic(t.key)} style={{padding:"8px 14px",borderRadius:50,fontSize:"0.8rem",border:`1.5px solid ${sel?"#0e0e0e":"rgba(0,0,0,0.12)"}`,background:sel?"#0e0e0e":"white",color:sel?"white":"#555",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}><t.icon/>{t.label}</button>;
-              })}
-            </div>
-            {selectedTopics.length===0&&<p style={{fontSize:"0.78rem",color:"#aaa",marginTop:8}}>No topics selected = mix of all topics</p>}
-          </div>
-
-          <div style={{marginBottom:24}}>
-            <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Difficulty</label>
-            <div style={{display:"flex",gap:8}}>
-              {[{k:"easy",l:"Easy"},{k:"medium",l:"Medium"},{k:"hard",l:"Hard"},{k:"mix",l:"Mix"}].map(d=>(
-                <button key={d.k} onClick={()=>setDifficulty(d.k)} style={{flex:1,padding:"10px",borderRadius:12,border:`1.5px solid ${difficulty===d.k?"#0e0e0e":"rgba(0,0,0,0.1)"}`,background:difficulty===d.k?"#0e0e0e":"white",color:difficulty===d.k?"white":"#555",cursor:"pointer",fontSize:"0.83rem",fontWeight:600}}>{d.l}</button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{marginBottom:24}}>
-            <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:14}}>Number of questions</label>
-            <div style={{display:"flex",gap:8}}>
-              {[5,10,15,20].map(n=>(
-                <button key={n} onClick={()=>setQuestionCount(n)} style={{flex:1,padding:"10px",borderRadius:12,border:`1.5px solid ${questionCount===n?"#0e0e0e":"rgba(0,0,0,0.1)"}`,background:questionCount===n?"#0e0e0e":"white",color:questionCount===n?"white":"#555",cursor:"pointer",fontSize:"0.9rem",fontWeight:700}}>{n}</button>
-              ))}
-            </div>
-          </div>
-
-          {mode==="stake" && (
-            <div style={{background:"white",borderRadius:16,padding:"20px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:16}}>
-              <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:10}}>Stake per player</label>
-              <div style={{position:"relative"}}>
-                <span style={{position:"absolute",left:18,top:"50%",transform:"translateY(-50%)",color:"#aaa",fontWeight:600}}>{cur.symbol}</span>
-                <input type="number" placeholder={`Min ${cur.stakeMin}`} value={stakeAmount} onChange={e=>setStakeAmount(Math.min(Number(e.target.value),cur.stakeMax))} style={{width:"100%",padding:"14px 18px 14px 42px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"1.1rem",fontWeight:700}}/>
-              </div>
-              <p style={{fontSize:"0.75rem",color:"#aaa",marginTop:6}}>Your wallet: {cur.symbol}{walletBalance.toLocaleString()} · Min: {cur.symbol}{cur.stakeMin} · Max: {cur.symbol}{cur.stakeMax.toLocaleString()}</p>
-              {!userId && <p style={{fontSize:"0.78rem",color:"#ef4444",marginTop:8}}>You need to be logged in to stake real money.</p>}
-              {stakeAmount>0&&<div style={{marginTop:12,padding:"10px 14px",background:"#f0efec",borderRadius:10,fontSize:"0.83rem",color:"#555"}}>
-                <Icons.trophy s={14} c="#0e0e0e"/> Winner receives up to: <strong>{cur.symbol}{Math.round(Number(stakeAmount)*expectedPlayers).toLocaleString()}</strong>
-              </div>}
-            </div>
-          )}
-
-          {error && <p style={{color:"#ef4444",fontSize:"0.85rem",marginBottom:12}}>{error}</p>}
-          <Btn onClick={createLobby} style={{width:"100%",padding:"15px"}} disabled={loading || (mode==="stake" && (!stakeAmount||!userId))}>
-            <Icons.share s={18} c="white"/>{loading?"Creating...":"Create Lobby & Invite"}
-          </Btn>
-        </div>
-      </div>
-    );
-  }
-
-  // ── LOBBY (real-time waiting room) ──────────────────────────────────────
+  // ── LOBBY (real-time waiting room) ───────────────────────────────────
   if (phase==="lobby") {
     const isHost = myPlayer?.is_host;
     return (
@@ -2881,7 +2722,7 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
           <div className="fadeUp" style={{textAlign:"center",marginBottom:24}}>
             <Icons.trophy s={40} c="#ffcd3c"/>
             <h2 className="syne" style={{fontSize:"1.4rem",fontWeight:800,marginTop:10,marginBottom:6}}>Invite your friends</h2>
-            <p style={{color:"#888",fontSize:"0.86rem",fontWeight:300}}>{session.stake_amount>0 ? `Everyone stakes ${cur.symbol}${session.stake_amount}` : "Free to play"}</p>
+            <p style={{color:"#888",fontSize:"0.86rem",fontWeight:300}}>Free to play — bragging rights only.</p>
           </div>
           <div style={{background:"white",borderRadius:20,padding:"24px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:20,textAlign:"center"}}>
             <p style={{fontSize:"0.78rem",fontWeight:600,color:"#aaa",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>Share this link</p>
@@ -2896,7 +2737,7 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
               <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
                 <Avatar size={30} bg={AVATAR_COLORS[i%AVATAR_COLORS.length]} iconSize={16}/>
                 <span style={{flex:1,fontSize:"0.92rem",fontWeight:500}}>{p.display_name}{p.is_host&&" (Host)"}</span>
-                <span style={{fontSize:"0.78rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}><Icons.check s={12} c="#16a34a"/>{session.stake_amount>0?"Staked":"In"}</span>
+                <Icons.check s={14} c="#16a34a"/>
               </div>
             ))}
           </div>
@@ -2911,7 +2752,7 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
     );
   }
 
-  // ── PLAYING (self-paced, real question bank) ─────────────────────────────
+  // ── PLAYING ───────────────────────────────────────────────────────────
   const currentQ = myQuestions[qIndex];
   if (phase==="playing" && currentQ) return (
     <div style={{minHeight:"100vh",background:"#fafaf8"}}>
@@ -2943,7 +2784,7 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
     </div>
   );
 
-  // ── WAITING for other players to finish ──────────────────────────────────
+  // ── WAITING for other players to finish ──────────────────────────────
   if (phase==="waiting-others") return (
     <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
       <div style={{maxWidth:380}}>
@@ -2954,7 +2795,7 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
     </div>
   );
 
-  // ── RESULT ────────────────────────────────────────────────────────────
+  // ── RESULT — plain leaderboard, no money language anywhere ───────────
   if (phase==="result") {
     const sorted = [...players].sort((a,b)=>(b.score||0)-(a.score||0));
     const top = sorted[0]?.score||0;
@@ -2972,12 +2813,8 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
               {isTie?<Icons.info s={32} c="#6366f1"/>:<Icons.trophy s={32} c="#16a34a"/>}
             </div>
             <h2 className="syne" style={{fontSize:"1.8rem",fontWeight:800,marginBottom:8}}>{isTie?"It's a tie!":"We have a winner!"}</h2>
-            {!isTie && session.stake_amount>0 && (
-              <p style={{color:"#888",fontWeight:300,fontSize:"0.9rem"}}>{sorted[0].display_name} received <strong style={{color:"#16a34a"}}>{cur.symbol}{Math.round(session.stake_amount*players.length).toLocaleString()}</strong> in their wallet.</p>
-            )}
-            {isTie && session.stake_amount>0 && (
-              <p style={{color:"#888",fontWeight:300,fontSize:"0.9rem"}}>Pot split equally between {tied.map(p=>p.display_name).join(", ")}.</p>
-            )}
+            {!isTie && <p style={{color:"#888",fontWeight:300,fontSize:"0.9rem"}}>{sorted[0].display_name} takes the win with {top} correct answer{top===1?"":"s"}.</p>}
+            {isTie && <p style={{color:"#888",fontWeight:300,fontSize:"0.9rem"}}>{tied.map(p=>p.display_name).join(", ")} tied with {top} correct answer{top===1?"":"s"}.</p>}
           </div>
           <div style={{background:"white",borderRadius:20,padding:"20px",border:"1px solid rgba(0,0,0,0.08)",marginBottom:24}}>
             {sorted.map((p,i)=>(
@@ -2996,6 +2833,7 @@ const GameStake = ({ goTo, currency, is18Plus, frozen=false, joinCode, userId, u
   }
   return null;
 };
+
 // ── CUSTOMIZATION ──────────────────────────────────────────────────────────────
 const Customization = ({ goTo, customization, setCustomization, userId }) => {
   const [local,setLocal] = useState(customization);
@@ -3287,8 +3125,8 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
         {q:"Is Unmaskr really anonymous?",a:"Yes. Senders are completely anonymous. Hints are based on general data they voluntarily share — never their exact identity. If a sender doesn't share a piece of info, that hint is shown for free."},
         {q:"How do I earn from hints?",a:"When someone pays to see a hint on your message, 50% goes to your wallet automatically. Withdraw anytime — balances never expire."},
         {q:"What if a withdrawal fails?",a:"If a withdrawal fails for any technical reason, the full amount is automatically returned to your wallet within 10 minutes."},
-        {q:"How does Stake & Win work?",a:"All players stake the same amount. Answer trivia questions based on your chosen topics and difficulty. Highest score wins the pot."},
-        {q:"What happens in a tie in Stake & Win?",a:"Tied players can agree to split the pot equally, or replay the game among just the tied players until there is a winner."},
+        {q:"How does Quiz Clash work?",a:"Everyone answers the same trivia questions, picked from the topics and difficulty the host chooses. Highest score wins — it's free to play, just for bragging rights."},
+        {q:"What happens in a tie in Quiz Clash?",a:"Tied players share the win — you can always start a rematch among just the tied players to settle it."},
         {q:"How do I contact support?",a:"Go to Settings → Contact Support. We typically reply within 24 hours at support@unmaskr.com."},
       ].map((item,i)=>(
         <div key={i} style={{background:"white",borderRadius:16,padding:"20px",marginBottom:12,border:"1px solid rgba(0,0,0,0.07)"}}>
@@ -3459,16 +3297,16 @@ const calcAge = (dobStr) => {
 
 // Screens that are NOT usernames — anything else in the URL path is treated
 // as someone's username and routes straight to the send-message page.
-const RESERVED_PATHS = ["landing","signup","login","forgot","terms","inbox","send","stats","wallet","games","game-lobby","game-stake","settings","customization","join","join-stake"];
+const RESERVED_PATHS = ["landing","signup","login","forgot","terms","inbox","send","stats","wallet","games","game-lobby","game-quiz","settings","customization","join","join-quiz"];
 
 const getInitialRouteFromURL = () => {
   const path = window.location.pathname.replace(/^\/+|\/+$/g, ""); // strip leading/trailing slashes
   if (!path) return { screen: "landing", params: {} };
   const parts = path.split("/");
   const segment = parts[0];
-  // Game invite links: /join/CODE (Mystery Lobby) and /join-stake/CODE (Stake & Win)
+  // Game invite links: /join/CODE (Mystery Lobby) and /join-quiz/CODE (Quiz Clash)
   if (segment === "join" && parts[1]) return { screen: "game-lobby", params: { joinCode: parts[1] } };
-  if (segment === "join-stake" && parts[1]) return { screen: "game-stake", params: { joinCode: parts[1] } };
+  if (segment === "join-quiz" && parts[1]) return { screen: "game-quiz", params: { joinCode: parts[1] } };
   if (RESERVED_PATHS.includes(segment)) return { screen: segment, params: {} };
   // Anything else (e.g. "/temi") is treated as a username send-link
   return { screen: "send", params: { username: segment } };
@@ -3490,7 +3328,6 @@ export default function App() {
   const currency = getCurrency(userCountry);
   const age = calcAge(userDOB);
   const isMinor = age!==null && age<18;
-  const is18Plus = age===null ? null : age>=18;
 
   const goTo = (s,p={}) => {
     setScreen(s);
@@ -3649,9 +3486,9 @@ export default function App() {
     send:          <SendPage goTo={goTo} params={params} receiverCurrency={currency}/>,
     stats:         <Stats goTo={goTo} userId={session?.user?.id}/>,
     wallet:        <Wallet goTo={goTo} currency={currency} userId={session?.user?.id} userName={profile?.name} withdrawalsDisabled={platformSettings?.withdrawals_enabled===false}/>,
-    games:         <Games goTo={goTo} mysteryFrozen={platformSettings?.mystery_lobby_frozen} stakeFrozen={platformSettings?.stake_win_frozen} userId={session?.user?.id}/>,
+    games:         <Games goTo={goTo} mysteryFrozen={platformSettings?.mystery_lobby_frozen} quizFrozen={platformSettings?.stake_win_frozen} userId={session?.user?.id}/>,
     "game-lobby":  <GameLobby goTo={goTo} frozen={platformSettings?.mystery_lobby_frozen} joinCode={params?.joinCode} userId={session?.user?.id} userName={profile?.name||profile?.username}/>,
-    "game-stake":  <GameStake goTo={goTo} currency={currency} is18Plus={is18Plus} frozen={platformSettings?.stake_win_frozen} joinCode={params?.joinCode} userId={session?.user?.id} userName={profile?.name||profile?.username}/>,
+    "game-quiz":   <GameQuiz goTo={goTo} frozen={platformSettings?.stake_win_frozen} joinCode={params?.joinCode} userId={session?.user?.id} userName={profile?.name||profile?.username}/>,
     settings:      <Settings goTo={goTo} customization={customization} setCustomization={setCustomization} currency={currency} profile={profile} userId={session?.user?.id} onLogout={handleLogout}/>,
     customization: <Customization goTo={goTo} customization={customization} setCustomization={setCustomization} userId={session?.user?.id}/>,
   };
