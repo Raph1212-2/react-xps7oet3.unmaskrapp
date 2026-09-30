@@ -1415,7 +1415,7 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
 
           {activeMsg.hints.length>0&&(
             <div style={{marginBottom:16,display:"flex",flexDirection:"column",gap:8}}>
-              {activeHints.filter(h=>activeMsg.hints.includes(h.key)).map(h=>{
+              {ALL_HINTS.filter(h=>activeMsg.hints.includes(h.key)).map(h=>{
                 const specified = isHintSpecified(h.key, activeMsg.specified);
                 return (
                   <div key={h.key} style={{padding:"12px 16px",borderRadius:12,background:"#f0efec",fontSize:"0.88rem",color:"#555",display:"flex",gap:10,alignItems:"center"}}>
@@ -1979,10 +1979,10 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
                 <div>
                   <div style={{padding:"16px",background:"#f0efec",borderRadius:12,marginBottom:12}}>
                     <p style={{fontWeight:600,fontSize:"0.88rem",marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Icons.bank s={14} c="#0e0e0e"/>Transfer details:</p>
-                    <p style={{fontSize:"0.85rem",color:"#555",marginBottom:4}}>Bank: <strong>[Your business bank name]</strong></p>
-                    <p style={{fontSize:"0.85rem",color:"#555",marginBottom:4}}>Account: <strong>[Your business account number]</strong></p>
-                    <p style={{fontSize:"0.85rem",color:"#555"}}>Name: <strong>[Your business account name]</strong></p>
-                    <p style={{fontSize:"0.72rem",color:"#aaa",marginTop:8,display:"flex",alignItems:"center",gap:5}}><Icons.warning s={11} c="#aaa"/>Placeholder — replace with your real business account details before launch.</p>
+                    <p style={{fontSize:"0.85rem",color:"#555",marginBottom:4}}>Bank: <strong>OPay</strong></p>
+                    <p style={{fontSize:"0.85rem",color:"#555",marginBottom:4}}>Account: <strong>6437162755</strong></p>
+                    <p style={{fontSize:"0.85rem",color:"#555"}}>Name: <strong>RAPHAEL OLUWARANTIMI JAIYEOBA</strong></p>
+                    <p style={{fontSize:"0.72rem",color:"#aaa",marginTop:8,display:"flex",alignItems:"center",gap:5}}><Icons.warning s={11} c="#aaa"/>Testing with a personal account for now — swap in your business account once it's ready.</p>
                   </div>
                   <div style={{marginBottom:12}}>
                     <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Amount you sent</label>
