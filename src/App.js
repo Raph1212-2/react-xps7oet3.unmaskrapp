@@ -1212,6 +1212,7 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
   const cur = currency || CURRENCIES.NG;
   const [messages,setMessages] = useState([]);
   const [loadingMsgs,setLoadingMsgs] = useState(true);
+  const [msgLoadError,setMsgLoadError] = useState("");
 
   const fetchMessages = () => {
     if (!userId) { setLoadingMsgs(false); return; }
@@ -1219,8 +1220,18 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
     // Runs through the database's get_inbox_messages() function instead of a raw
     // select — the database itself withholds sender_email/age/name/gender for any
     // hint you haven't paid for, so there's nothing sensitive to intercept anymore.
+    setMsgLoadError("");
     supabase.rpc("get_inbox_messages")
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          // Surfaced instead of silently showing "No messages yet" — the most
+          // common cause is that wallet-security.sql hasn't been run yet, so
+          // this database function doesn't exist.
+          console.error("get_inbox_messages failed:", error);
+          setMsgLoadError(error.message || "Couldn't load your messages.");
+          setLoadingMsgs(false);
+          return;
+        }
         if (data) setMessages(data.map(m => ({
           id: m.id,
           text: m.text,
@@ -1343,7 +1354,14 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
           <span style={{fontSize:"0.83rem",color:"#aaa"}}>{messages.length} total</span>
         </div>
         {loadingMsgs && <p style={{textAlign:"center",color:"#aaa",padding:"40px 0"}}>Loading messages...</p>}
-        {!loadingMsgs && messages.length===0 && (
+        {!loadingMsgs && msgLoadError && (
+          <div style={{textAlign:"center",padding:"40px 24px",background:"#fff5f5",border:"1px solid #fca5a5",borderRadius:16}}>
+            <Icons.warning s={28} c="#ef4444"/>
+            <p className="syne" style={{fontWeight:700,fontSize:"1rem",marginTop:12,marginBottom:6,color:"#991b1b"}}>Couldn't load your messages</p>
+            <p style={{color:"#991b1b",fontSize:"0.82rem",fontFamily:"monospace",wordBreak:"break-word"}}>{msgLoadError}</p>
+          </div>
+        )}
+        {!loadingMsgs && !msgLoadError && messages.length===0 && (
           <div style={{textAlign:"center",padding:"60px 24px"}}>
             <div style={{width:64,height:64,borderRadius:"50%",background:"#f0efec",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><Icons.inbox s={28} c="#aaa"/></div>
             <p className="syne" style={{fontWeight:700,fontSize:"1.1rem",marginBottom:8}}>No messages yet</p>
