@@ -1750,6 +1750,7 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
   const [filter,setFilter] = useState("all");
   const [submitting,setSubmitting] = useState(false);
   const [withdrawError,setWithdrawError] = useState("");
+  const [topupError,setTopupError] = useState("");
   const [balance,setBalance] = useState(0);
   const [txns,setTxns] = useState([]);
   const [loading,setLoading] = useState(true);
@@ -1811,12 +1812,22 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
   const finishTopup = async () => {
     if (!userId || submitting) return;
     setSubmitting(true);
+    setTopupError("");
     const ref = transferRef || makeRef();
-    await supabase.from("transactions").insert({
-      user_id: userId, type: "deposit", amount: Number(amount)||0, currency: cur.code,
-      status: "pending", reference: ref,
+    // Goes through request_deposit() in the database instead of a raw insert —
+    // this is also what actually checks for an error now. Before, nothing here
+    // checked whether the insert succeeded at all, so a failed request could
+    // still show a "submitted!" receipt even though nothing was saved.
+    const { error } = await supabase.rpc("request_deposit", {
+      p_amount: Number(amount)||0,
+      p_currency: cur.code,
+      p_reference: ref,
     });
     setSubmitting(false);
+    if (error) {
+      setTopupError("Couldn't submit your top-up — please try again.");
+      return;
+    }
     setDone(true);
     setReceipt({
       title:"Top-up Receipt",
@@ -2013,6 +2024,7 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
                   <Btn onClick={finishTopup} style={{width:"100%",marginTop:12,padding:"15px"}} disabled={!amount||submitting}>
                     <Icons.check s={16} c="white"/>{submitting?"Submitting...":"I've made the transfer"}
                   </Btn>
+                  {topupError && <p style={{marginTop:12,padding:"10px 14px",background:"#fff5f5",border:"1px solid #fca5a5",borderRadius:10,fontSize:"0.8rem",color:"#ef4444"}}>{topupError}</p>}
                 </div>
               )}
             </>}
