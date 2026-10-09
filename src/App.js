@@ -1293,6 +1293,7 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
   const [showHints,setShowHints] = useState(false);
   const [showEmoji,setShowEmoji] = useState(false);
   const [replyText,setReplyText] = useState("");
+  const [replyStatus,setReplyStatus] = useState(null); // null | "sent" | "emailed" | "error"
   const [shareMsg,setShareMsg] = useState(null);
   const [receipt,setReceipt] = useState(null);
   const [unlocking,setUnlocking] = useState(false);
@@ -1361,14 +1362,21 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
     setMessages(ms=>ms.map(m=>m.id===activeMsg.id?{...m,reactions:updated}:m));
   };
 
+  // The actual delivery (as a new anonymous message in the sender's own inbox,
+  // or an email if they gave one but have no account) happens entirely inside
+  // send_reply() in the database — the sender's real email never reaches this
+  // browser, same privacy guarantee as everywhere else sender data is handled.
   const sendReply = async () => {
     if(!replyText.trim()) return;
     const filtered = filterText(replyText.trim(), isMinor);
-    await supabase.from("message_replies").insert({ message_id: activeMsg.id, text: filtered });
+    setReplyStatus(null);
+    const { data, error } = await supabase.rpc("send_reply", { p_message_id: activeMsg.id, p_reply_text: filtered });
+    if (error) { setReplyStatus("error"); return; }
     const updated = [...activeMsg.replies, filtered];
     setActiveMsg(m=>({...m,replies:updated}));
     setMessages(ms=>ms.map(m=>m.id===activeMsg.id?{...m,replies:updated}:m));
     setReplyText("");
+    setReplyStatus(data?.delivered ? "sent" : data?.emailed ? "emailed" : null);
   };
 
   return (
@@ -1466,6 +1474,9 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
               <textarea value={replyText} onChange={e=>setReplyText(e.target.value)} placeholder="Type your reply..." rows={2} style={{flex:1,padding:"10px 14px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.1)",background:"#fafaf8",fontSize:"0.88rem",resize:"none",lineHeight:1.5}}/>
               <button onClick={sendReply} disabled={!replyText.trim()} style={{padding:"10px 16px",borderRadius:12,border:"none",background:replyText.trim()?"#0e0e0e":"#e0e0e0",color:"white",fontWeight:600,cursor:replyText.trim()?"pointer":"not-allowed",fontSize:"0.83rem"}}>Send</button>
             </div>
+            {replyStatus==="sent" && <p style={{fontSize:"0.78rem",color:"#16a34a",marginTop:8}}>Delivered to their Unmaskr inbox.</p>}
+            {replyStatus==="emailed" && <p style={{fontSize:"0.78rem",color:"#16a34a",marginTop:8}}>Emailed to them — they didn't have an account to deliver it to directly.</p>}
+            {replyStatus==="error" && <p style={{fontSize:"0.78rem",color:"#ef4444",marginTop:8}}>Couldn't send that reply — please try again.</p>}
           </div>
 
           {activeMsg.hints.length>0&&(
