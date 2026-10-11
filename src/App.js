@@ -1331,10 +1331,13 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
 
     if (error) {
       setUnlocking(false);
+      console.error("purchase_hint failed:", error);
       if (error.message?.includes("insufficient_funds")) setUnlockError("Not enough wallet balance for this hint. Top up your wallet to continue.");
       else if (error.message?.includes("already_unlocked")) setUnlockError("You've already unlocked this hint.");
       else if (error.message?.includes("rate_limited")) setUnlockError("You're unlocking hints a little too fast — give it a minute and try again.");
-      else setUnlockError("Couldn't unlock this hint. Please try again.");
+      // Shown instead of a generic message so we can actually see what's wrong,
+      // rather than guess — same fix as the inbox's earlier silent-failure bug.
+      else setUnlockError(error.message || "Couldn't unlock this hint. Please try again.");
       return;
     }
 
