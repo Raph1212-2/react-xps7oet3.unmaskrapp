@@ -2051,6 +2051,9 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
               ))}
             </div>
             <p style={{fontSize:"0.78rem",color:"#aaa",marginTop:8}}>Minimum {cur.symbol}100.</p>
+            {Number(amount)>=100 && (()=>{ const c=Number(amount); let pay=Math.ceil((c/0.985)*100)/100+0.01; if(pay-c>2000) pay=c+2000; return (
+              <p style={{fontSize:"0.82rem",color:"#555",marginTop:8,lineHeight:1.6}}>You'll pay <strong>{cur.symbol}{pay.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong> (includes the bank-transfer fee) and <strong>{cur.symbol}{c.toLocaleString()}</strong> is added to your wallet.</p>
+            ); })()}
 
             <Btn onClick={finishTopup} style={{width:"100%",marginTop:20,padding:"15px"}} disabled={!amount||Number(amount)<100||submitting}>
               <Icons.bank s={16} c="white"/>{submitting?"Preparing...":"Get account number"}
@@ -2058,7 +2061,7 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
             {topupError && <p style={{marginTop:12,padding:"10px 14px",background:"#fff5f5",border:"1px solid #fca5a5",borderRadius:10,fontSize:"0.8rem",color:"#ef4444"}}>{topupError}</p>}
 
             <div style={{marginTop:16,padding:"12px 14px",background:"#f0efec",borderRadius:10,fontSize:"0.78rem",color:"#666",lineHeight:1.6,display:"flex",gap:8}}>
-              <Icons.info s={14} c="#888"/>Send the exact amount shown. After paying, come back here — your balance updates within a minute. Not credited? Contact support with the amount and time.
+              <Icons.info s={14} c="#888"/>Send the exact amount shown. The account name may start with “BACHS/” — that's our payment provider and it's the right account. After paying, come back here — your balance updates within a minute. Not credited? Contact support with the amount and time.
             </div>
           </div>
         )}
