@@ -381,7 +381,7 @@ const getRandHints = (u=[]) => [...ALL_HINTS.filter(h=>!u.includes(h.key))].sort
 // True only when the sender actually provided this specific piece of data.
 const isHintSpecified = (key, specified) => !!(specified && specified[key]);
 
-const TERMS = `TERMS AND CONDITIONS — UNMASKR\nLast updated: June 2025\n\n1. ACCEPTANCE\nBy using Unmaskr, you agree to these Terms.\n\n2. ELIGIBILITY\nYou must be at least 16 years old to use Unmaskr.\n\n3. ANONYMOUS MESSAGING\nUnmaskr allows anonymous messages. We may disclose sender info to law enforcement if messages contain threats or illegal content.\n\n4. HINT SYSTEM\nHints are based on general profile data voluntarily shared by senders. For entertainment only. When a hint is purchased, 50% goes to the message recipient's wallet. 50% is retained by Unmaskr. If the sender didn't provide the information behind a hint, it is shown for free and no payment is taken.\n\n5. PAYMENTS & REFUNDS\nAll hint payments are processed via Paystack. If a withdrawal or deposit fails due to a technical issue on our end, the full amount is automatically returned to your Unmaskr wallet within 10 minutes. Users are responsible for providing correct bank/airtime details.\n\n6. CONTENT MODERATION\nProfanity and offensive language is automatically filtered. Users who attempt to bypass filters using alternate spellings or abbreviations do so at their own risk and remain fully liable for their content. Unmaskr reserves the right to suspend accounts found violating these terms.\n\n7. SEXUAL CONTENT\nSexual language is strictly blocked for users under 18 years of age. This applies to all messages sent and received.\n\n8. PROHIBITED CONDUCT\nNo threatening, harassing, defamatory or illegal content. Violations may result in permanent account suspension.\n\n9. SAFETY\nReport harmful messages using the report button. Unmaskr reviews all reports promptly.\n\n10. PRIVACY\nWe collect only data necessary to operate the platform. We do not sell your data. Wallets never expire. Even if a wallet is unclaimed or abandoned for 5 years or more, the balance remains yours and can be claimed at any time.\n\n11. GAMES — STAKE & WIN\nThe 18+ staking game involves real money. You must be 18+ based on your registered date of birth. Winners receive the total pot. Maximum stake: equivalent of ₦1,000,000 in your local currency. Minimum 2, maximum 10 players. In the event of a dispute, an Unmaskr admin may review account activity to assist resolution.\n\n12. CHANGES\nWe may update these terms at any time.\n\n13. CONTACT\nsupport@unmaskr.com`;
+const TERMS = `TERMS AND CONDITIONS — UNMASKR\nLast updated: June 2025\n\n1. ACCEPTANCE\nBy using Unmaskr, you agree to these Terms.\n\n2. ELIGIBILITY\nYou must be at least 16 years old to use Unmaskr.\n\n3. ANONYMOUS MESSAGING\nUnmaskr allows anonymous messages. We may disclose sender info to law enforcement if messages contain threats or illegal content.\n\n4. HINT SYSTEM\nHints are based on general profile data voluntarily shared by senders. For entertainment only. When a hint is purchased, 50% goes to the message recipient's wallet. 50% is retained by Unmaskr. If the sender didn't provide the information behind a hint, it is shown for free and no payment is taken.\n\n5. PAYMENTS & REFUNDS\nAll payments are processed via Bachs. If a withdrawal or deposit fails due to a technical issue on our end, the full amount is automatically returned to your Unmaskr wallet within 10 minutes. Users are responsible for providing correct bank/airtime details.\n\n6. CONTENT MODERATION\nProfanity and offensive language is automatically filtered. Users who attempt to bypass filters using alternate spellings or abbreviations do so at their own risk and remain fully liable for their content. Unmaskr reserves the right to suspend accounts found violating these terms.\n\n7. SEXUAL CONTENT\nSexual language is strictly blocked for users under 18 years of age. This applies to all messages sent and received.\n\n8. PROHIBITED CONDUCT\nNo threatening, harassing, defamatory or illegal content. Violations may result in permanent account suspension.\n\n9. SAFETY\nReport harmful messages using the report button. Unmaskr reviews all reports promptly.\n\n10. PRIVACY\nWe collect only data necessary to operate the platform. We do not sell your data. Wallets never expire. Even if a wallet is unclaimed or abandoned for 5 years or more, the balance remains yours and can be claimed at any time.\n\n11. GAMES — STAKE & WIN\nThe 18+ staking game involves real money. You must be 18+ based on your registered date of birth. Winners receive the total pot. Maximum stake: equivalent of ₦1,000,000 in your local currency. Minimum 2, maximum 10 players. In the event of a dispute, an Unmaskr admin may review account activity to assist resolution.\n\n12. CHANGES\nWe may update these terms at any time.\n\n13. CONTACT\nsupport@unmaskr.com`;
 
 // ── PROFANITY FILTER ───────────────────────────────────────────────────────────
 const PROFANITY = ["fuck","shit","bitch","damn","ass","crap","bastard","idiot","stupid"];
@@ -1821,6 +1821,21 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
   };
   useEffect(() => { fetchWallet(); }, [userId]);
 
+  // Bank list for withdrawals (Bachs needs a bank code, so users pick from a list)
+  const [banks,setBanks] = useState([]);
+  const [bankCode,setBankCode] = useState("");
+  const [banksErr,setBanksErr] = useState("");
+  useEffect(() => {
+    if (tab!=="withdraw" || wMethod!=="bank" || banks.length>0 || !userId) return;
+    let cancelled = false;
+    supabase.functions.invoke("super-service").then(({ data, error }) => {
+      if (cancelled) return;
+      if (error || !data?.banks) { console.error("bank-list failed:", error, data); setBanksErr("Couldn't load banks — please try again."); return; }
+      setBanksErr(""); setBanks(data.banks);
+    });
+    return () => { cancelled = true; };
+  }, [tab,wMethod,userId]);
+
   const filtered = filter==="all"?txns:txns.filter(t=>t.cat===filter);
   const makeRef = () => "UNM-"+(Math.random()*9999|0).toString().padStart(4,"0");
 
@@ -1843,6 +1858,10 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
     if (error) {
       setWithdrawError(error.message?.includes("insufficient_funds") ? "Your wallet balance is lower than this amount." : "Couldn't submit your withdrawal — please try again.");
       return;
+    }
+    if (wMethod==="bank" && bankCode && txnId) {
+      const { error: attachErr } = await supabase.rpc("attach_withdrawal_bank", { p_txn_id: String(txnId), p_bank_code: bankCode });
+      if (attachErr) console.error("attach_withdrawal_bank failed:", attachErr);
     }
     setDone(true);
     setReceipt({
@@ -1988,7 +2007,10 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
               {wMethod==="bank"&&(
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
                   <Inp placeholder="Account number" value={acct} onChange={e=>setAcct(e.target.value)}/>
-                  <Inp placeholder="Bank name" value={bankName} onChange={e=>setBankName(e.target.value)}/>
+                  <select value={bankCode} onChange={e=>{const b=banks.find(x=>x.code===e.target.value); setBankCode(e.target.value); setBankName(b?b.name:"");}} style={{width:"100%",padding:"14px 18px",borderRadius:14,border:"1.5px solid rgba(0,0,0,0.12)",background:"#fafaf8",fontSize:"0.95rem",cursor:"pointer"}}>
+                    <option value="">{banks.length?"Select your bank":(banksErr||"Loading banks...")}</option>
+                    {banks.map(b=><option key={b.code} value={b.code}>{b.name}</option>)}
+                  </select>
                   <Inp placeholder="Account holder name" value={acctName} onChange={e=>setAcctName(e.target.value)}/>
                 </div>
               )}
@@ -2003,7 +2025,7 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
                   </div>
                 </div>
               )}
-              <Btn onClick={finishWithdraw} style={{width:"100%",marginTop:20,padding:"15px"}} disabled={!amount||Number(amount)<100||Number(amount)>balance||!wMethod||(wMethod==="bank"&&(!acct||!bankName))||(wMethod==="airtime"&&!phone)||submitting}>
+              <Btn onClick={finishWithdraw} style={{width:"100%",marginTop:20,padding:"15px"}} disabled={!amount||Number(amount)<100||Number(amount)>balance||!wMethod||(wMethod==="bank"&&(!/^\d{10}$/.test(acct)||!bankName||!bankCode))||(wMethod==="airtime"&&!phone)||submitting}>
                 <Icons.withdraw s={16} c="white"/>{submitting?"Submitting...":(wMethod==="airtime"?"Withdraw as airtime":"Request withdrawal")}
               </Btn>
               {withdrawError && <p style={{marginTop:12,padding:"10px 14px",background:"#fff5f5",border:"1px solid #fca5a5",borderRadius:10,fontSize:"0.8rem",color:"#ef4444"}}>{withdrawError}</p>}
