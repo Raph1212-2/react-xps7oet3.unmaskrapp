@@ -381,7 +381,7 @@ const getRandHints = (u=[]) => [...ALL_HINTS.filter(h=>!u.includes(h.key))].sort
 // True only when the sender actually provided this specific piece of data.
 const isHintSpecified = (key, specified) => !!(specified && specified[key]);
 
-const TERMS = `TERMS AND CONDITIONS — UNMASKR\nLast updated: June 2025\n\n1. ACCEPTANCE\nBy using Unmaskr, you agree to these Terms.\n\n2. ELIGIBILITY\nYou must be at least 16 years old to use Unmaskr.\n\n3. ANONYMOUS MESSAGING\nUnmaskr allows anonymous messages. We may disclose sender info to law enforcement if messages contain threats or illegal content.\n\n4. HINT SYSTEM\nHints are based on general profile data voluntarily shared by senders. For entertainment only. When a hint is purchased, 50% goes to the message recipient's wallet. 50% is retained by Unmaskr. If the sender didn't provide the information behind a hint, it is shown for free and no payment is taken.\n\n5. PAYMENTS & REFUNDS\nAll payments are processed via Bachs. If a withdrawal or deposit fails due to a technical issue on our end, the full amount is automatically returned to your Unmaskr wallet within 10 minutes. Users are responsible for providing correct bank/airtime details.\n\n6. CONTENT MODERATION\nProfanity and offensive language is automatically filtered. Users who attempt to bypass filters using alternate spellings or abbreviations do so at their own risk and remain fully liable for their content. Unmaskr reserves the right to suspend accounts found violating these terms.\n\n7. SEXUAL CONTENT\nSexual language is strictly blocked for users under 18 years of age. This applies to all messages sent and received.\n\n8. PROHIBITED CONDUCT\nNo threatening, harassing, defamatory or illegal content. Violations may result in permanent account suspension.\n\n9. SAFETY\nReport harmful messages using the report button. Unmaskr reviews all reports promptly.\n\n10. PRIVACY\nWe collect only data necessary to operate the platform. We do not sell your data. Wallets never expire. Even if a wallet is unclaimed or abandoned for 5 years or more, the balance remains yours and can be claimed at any time.\n\n11. GAMES — STAKE & WIN\nThe 18+ staking game involves real money. You must be 18+ based on your registered date of birth. Winners receive the total pot. Maximum stake: equivalent of ₦1,000,000 in your local currency. Minimum 2, maximum 10 players. In the event of a dispute, an Unmaskr admin may review account activity to assist resolution.\n\n12. CHANGES\nWe may update these terms at any time.\n\n13. CONTACT\nsupport@unmaskr.com`;
+const TERMS = `TERMS AND CONDITIONS — UNMASKR\nLast updated: June 2025\n\n1. ACCEPTANCE\nBy using Unmaskr, you agree to these Terms.\n\n2. ELIGIBILITY\nYou must be at least 16 years old to use Unmaskr.\n\n3. ANONYMOUS MESSAGING\nUnmaskr allows anonymous messages. We may disclose sender info to law enforcement if messages contain threats or illegal content.\n\n4. HINT SYSTEM\nHints are based on general profile data voluntarily shared by senders. For entertainment only. When a hint is purchased, 50% goes to the message recipient's wallet. 50% is retained by Unmaskr. If the sender didn't provide the information behind a hint, it is shown for free and no payment is taken.\n\n5. PAYMENTS & REFUNDS\nAll payments are processed via Bachs. If a withdrawal or deposit fails due to a technical issue on our end, the full amount is automatically returned to your Unmaskr wallet within 10 minutes. The minimum withdrawal is ₦1,000, and a ₦50 charge is deducted from each bank withdrawal. The bank account name must match the name on your Unmaskr account. Users are responsible for providing correct bank/airtime details.\n\n6. CONTENT MODERATION\nProfanity and offensive language is automatically filtered. Users who attempt to bypass filters using alternate spellings or abbreviations do so at their own risk and remain fully liable for their content. Unmaskr reserves the right to suspend accounts found violating these terms.\n\n7. SEXUAL CONTENT\nSexual language is strictly blocked for users under 18 years of age. This applies to all messages sent and received.\n\n8. PROHIBITED CONDUCT\nNo threatening, harassing, defamatory or illegal content. Violations may result in permanent account suspension.\n\n9. SAFETY\nReport harmful messages using the report button. Unmaskr reviews all reports promptly.\n\n10. PRIVACY\nWe collect only data necessary to operate the platform. We do not sell your data. Wallets never expire. Even if a wallet is unclaimed or abandoned for 5 years or more, the balance remains yours and can be claimed at any time.\n\n11. GAMES — STAKE & WIN\nThe 18+ staking game involves real money. You must be 18+ based on your registered date of birth. Winners receive the total pot. Maximum stake: equivalent of ₦1,000,000 in your local currency. Minimum 2, maximum 10 players. In the event of a dispute, an Unmaskr admin may review account activity to assist resolution.\n\n12. CHANGES\nWe may update these terms at any time.\n\n13. CONTACT\nsupport@unmaskr.com`;
 
 // ── PROFANITY FILTER ───────────────────────────────────────────────────────────
 const PROFANITY = ["fuck","shit","bitch","damn","ass","crap","bastard","idiot","stupid"];
@@ -1856,7 +1856,10 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
     });
     setSubmitting(false);
     if (error) {
-      setWithdrawError(error.message?.includes("insufficient_funds") ? "Your wallet balance is lower than this amount." : "Couldn't submit your withdrawal — please try again.");
+      setWithdrawError(
+        error.message?.includes("min_withdrawal") ? "The minimum withdrawal is "+cur.symbol+"1,000."
+        : error.message?.includes("insufficient_funds") ? "Your wallet balance is lower than this amount."
+        : "Couldn't submit your withdrawal — please try again.");
       return;
     }
     if (wMethod==="bank" && bankCode && txnId) {
@@ -1868,6 +1871,7 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
       title:"Withdrawal Receipt",
       items:[
         ["Amount",`${cur.symbol}${amount}`],
+        ...(wMethod==="bank" ? [["Charges",`${cur.symbol}50`],["You receive",`${cur.symbol}${Math.max(0,Number(amount)-50)}`]] : []),
         ["Method",wMethod==="airtime"?"Airtime":"Bank Transfer"],
         ["Status","Pending admin approval"],
         ["Reference",txnId],
@@ -1984,7 +1988,7 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
               <h3 className="syne" style={{fontSize:"1.2rem",fontWeight:800,marginBottom:6,display:"flex",alignItems:"center",gap:8}}>
                 <Icons.withdraw s={20} c="#0e0e0e"/>Withdraw funds
               </h3>
-              <p style={{fontSize:"0.85rem",color:"#888",marginBottom:20,fontWeight:300}}>Minimum: {cur.symbol}100 · Reviewed and approved by an admin before payout.</p>
+              <p style={{fontSize:"0.85rem",color:"#888",marginBottom:20,fontWeight:300}}>Minimum: {cur.symbol}1,000 · A {cur.symbol}50 charge applies to each bank withdrawal.</p>
               <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
                 {[{k:"bank",l:"Bank Transfer",d:"To your bank account",i:<Icons.bank s={16}/>},{k:"airtime",l:"Airtime",d:"To your phone",i:<Icons.phone s={16}/>}].map(m=>(
                   <button key={m.k} onClick={()=>setWMethod(m.k)} style={{padding:"14px 18px",borderRadius:14,border:`1.5px solid ${wMethod===m.k?"#0e0e0e":"rgba(0,0,0,0.1)"}`,background:wMethod===m.k?"#0e0e0e":"white",color:wMethod===m.k?"white":"#0e0e0e",cursor:"pointer",textAlign:"left",transition:"all 0.2s",display:"flex",alignItems:"center",gap:12}}>
@@ -2002,7 +2006,8 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
                   <span style={{position:"absolute",left:18,top:"50%",transform:"translateY(-50%)",color:"#aaa"}}>{cur.symbol}</span>
                   <Inp placeholder="100" value={amount} onChange={e=>setAmount(e.target.value)} style={{paddingLeft:36}}/>
                 </div>
-                <p style={{fontSize:"0.78rem",color:"#aaa",marginTop:6}}>Min: {cur.symbol}100 · Available: {cur.symbol}{balance.toLocaleString()}</p>
+                <p style={{fontSize:"0.78rem",color:"#aaa",marginTop:6}}>Min: {cur.symbol}1,000 · Available: {cur.symbol}{balance.toLocaleString()}</p>
+                {Number(amount)>=1000 && wMethod==="bank" && <p style={{fontSize:"0.8rem",color:"#555",marginTop:6,lineHeight:1.6}}>Charges: {cur.symbol}50 · You'll receive <strong>{cur.symbol}{Math.max(0,Number(amount)-50).toLocaleString()}</strong></p>}
               </div>
               {wMethod==="bank"&&(
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -2025,7 +2030,7 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
                   </div>
                 </div>
               )}
-              <Btn onClick={finishWithdraw} style={{width:"100%",marginTop:20,padding:"15px"}} disabled={!amount||Number(amount)<100||Number(amount)>balance||!wMethod||(wMethod==="bank"&&(!/^\d{10}$/.test(acct)||!bankName||!bankCode))||(wMethod==="airtime"&&!phone)||submitting}>
+              <Btn onClick={finishWithdraw} style={{width:"100%",marginTop:20,padding:"15px"}} disabled={!amount||Number(amount)<1000||Number(amount)>balance||!wMethod||(wMethod==="bank"&&(!/^\d{10}$/.test(acct)||!bankName||!bankCode))||(wMethod==="airtime"&&!phone)||submitting}>
                 <Icons.withdraw s={16} c="white"/>{submitting?"Submitting...":(wMethod==="airtime"?"Withdraw as airtime":"Request withdrawal")}
               </Btn>
               {withdrawError && <p style={{marginTop:12,padding:"10px 14px",background:"#fff5f5",border:"1px solid #fca5a5",borderRadius:10,fontSize:"0.8rem",color:"#ef4444"}}>{withdrawError}</p>}
@@ -2038,7 +2043,7 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
             <h3 className="syne" style={{fontSize:"1.2rem",fontWeight:800,marginBottom:6,display:"flex",alignItems:"center",gap:8}}>
               <Icons.deposit s={20} c="#0e0e0e"/>Top up your wallet
             </h3>
-            <p style={{fontSize:"0.85rem",color:"#888",marginBottom:20,fontWeight:300}}>Pay by bank transfer. You'll get a fresh account number for this top-up — it's valid for 30 minutes and your wallet is credited automatically.</p>
+            <p style={{fontSize:"0.85rem",color:"#888",marginBottom:20,fontWeight:300}}>Pay by bank transfer. You'll get a fresh account number for this top-up — it's valid for 30 minutes and your wallet is credited automatically. Withdrawals start from {cur.symbol}1,000.</p>
 
             <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Amount</label>
             <div style={{position:"relative"}}>
@@ -2052,7 +2057,7 @@ const Wallet = ({ goTo, currency, userId, userName, withdrawalsDisabled=false })
             </div>
             <p style={{fontSize:"0.78rem",color:"#aaa",marginTop:8}}>Minimum {cur.symbol}100.</p>
             {Number(amount)>=100 && (()=>{ const c=Number(amount); let pay=Math.ceil((c/0.985)*100)/100+0.01; if(pay-c>2000) pay=c+2000; return (
-              <p style={{fontSize:"0.82rem",color:"#555",marginTop:8,lineHeight:1.6}}>You'll pay <strong>{cur.symbol}{pay.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong> (includes the bank-transfer fee) and <strong>{cur.symbol}{c.toLocaleString()}</strong> is added to your wallet.</p>
+              <p style={{fontSize:"0.82rem",color:"#555",marginTop:8,lineHeight:1.6}}>You'll pay <strong>{cur.symbol}{pay.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong> (includes the payment fee) and <strong>{cur.symbol}{c.toLocaleString()}</strong> is added to your wallet.</p>
             ); })()}
 
             <Btn onClick={finishTopup} style={{width:"100%",marginTop:20,padding:"15px"}} disabled={!amount||Number(amount)<100||submitting}>
