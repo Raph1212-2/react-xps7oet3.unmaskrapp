@@ -381,7 +381,180 @@ const getRandHints = (u=[]) => [...ALL_HINTS.filter(h=>!u.includes(h.key))].sort
 // True only when the sender actually provided this specific piece of data.
 const isHintSpecified = (key, specified) => !!(specified && specified[key]);
 
-const TERMS = `TERMS AND CONDITIONS — UNMASKR\nLast updated: June 2025\n\n1. ACCEPTANCE\nBy using Unmaskr, you agree to these Terms.\n\n2. ELIGIBILITY\nYou must be at least 16 years old to use Unmaskr.\n\n3. ANONYMOUS MESSAGING\nUnmaskr allows anonymous messages. We may disclose sender info to law enforcement if messages contain threats or illegal content.\n\n4. HINT SYSTEM\nHints are based on general profile data voluntarily shared by senders. For entertainment only. When a hint is purchased, 50% goes to the message recipient's wallet. 50% is retained by Unmaskr. If the sender didn't provide the information behind a hint, it is shown for free and no payment is taken.\n\n5. PAYMENTS & REFUNDS\nAll payments are processed via Bachs. If a withdrawal or deposit fails due to a technical issue on our end, the full amount is automatically returned to your Unmaskr wallet within 10 minutes. The minimum withdrawal is ₦1,000, and a ₦50 charge is deducted from each bank withdrawal. The bank account name must match the name on your Unmaskr account. Users are responsible for providing correct bank/airtime details.\n\n6. CONTENT MODERATION\nProfanity and offensive language is automatically filtered. Users who attempt to bypass filters using alternate spellings or abbreviations do so at their own risk and remain fully liable for their content. Unmaskr reserves the right to suspend accounts found violating these terms.\n\n7. SEXUAL CONTENT\nSexual language is strictly blocked for users under 18 years of age. This applies to all messages sent and received.\n\n8. PROHIBITED CONDUCT\nNo threatening, harassing, defamatory or illegal content. Violations may result in permanent account suspension.\n\n9. SAFETY\nReport harmful messages using the report button. Unmaskr reviews all reports promptly.\n\n10. PRIVACY\nWe collect only data necessary to operate the platform. We do not sell your data. Wallets never expire. Even if a wallet is unclaimed or abandoned for 5 years or more, the balance remains yours and can be claimed at any time.\n\n11. GAMES — STAKE & WIN\nThe 18+ staking game involves real money. You must be 18+ based on your registered date of birth. Winners receive the total pot. Maximum stake: equivalent of ₦1,000,000 in your local currency. Minimum 2, maximum 10 players. In the event of a dispute, an Unmaskr admin may review account activity to assist resolution.\n\n12. CHANGES\nWe may update these terms at any time.\n\n13. CONTACT\nsupport@unmaskr.com`;
+const TERMS = `TERMS AND CONDITIONS
+Unmaskr Limited
+Last updated: October 2026
+
+Please read these Terms carefully. They explain what Unmaskr is, what you can expect from us, and what we expect from you. By creating an account, sending a message through an Unmaskr link, or using any part of Unmaskr, you agree to these Terms and to our Privacy Policy. If you do not agree, please do not use Unmaskr.
+
+1. WHO WE ARE
+Unmaskr is operated by Unmaskr Limited, a company registered in Nigeria ("Unmaskr", "we", "us", "our"). Company details are available on request at support@unmaskr.site. "You" means anyone who uses Unmaskr, whether as an account holder or as a visitor who sends a message.
+
+2. WHAT UNMASKR IS
+Unmaskr lets you get a personal link and receive anonymous messages. Anyone with your link can send you a message without revealing who they are. Unmaskr also offers paid "hints" (general clues about a sender), a wallet, and free games.
+Unmaskr is an entertainment platform. It is not a bank, a payment institution or a financial adviser.
+
+3. WHO CAN USE UNMASKR
+3.1 You must be at least 16 years old.
+3.2 If you are under 18, you confirm that a parent or guardian knows about and agrees to your use of Unmaskr, including any payment you make.
+3.3 You must give accurate information when you sign up and keep it up to date.
+3.4 You may hold only one account.
+3.5 We may ask you to confirm your age or identity at any time, and we may suspend an account until you do.
+
+4. YOUR ACCOUNT
+4.1 When you sign up, use your real full name. We use that name to process withdrawals (see section 9), so it must match the name on the bank account you withdraw to.
+4.2 Keep your password secret. You are responsible for everything done through your account. Tell us straight away at support@unmaskr.site if you think someone else has used it.
+4.3 We may restrict changes to the name on your account, especially after you have requested a withdrawal. If you need a correction, contact support.
+
+5. SENDING AND RECEIVING ANONYMOUS MESSAGES
+5.1 Your identity is not shown to the person you message. Senders may choose to share optional details (such as gender, birth month, age, first name and an email address for replies). If you are logged in, the details saved on your profile are used instead of anything typed on the message page.
+5.2 Those details are used only to create hints and to let us contact you about replies, as described in the Privacy Policy. We never show a sender's email address or exact details to the recipient.
+5.3 Recipients can react to a message, reply to it, and share its text as an image. The image does not include the sender's identity. By sending a message you accept that it may be shared in this way.
+5.4 Anonymity does not give anyone permission to abuse others. See section 10.
+5.5 In limited cases we may disclose sender information, for example to respond to a valid legal request from a court or law-enforcement agency, or where we believe it is necessary to prevent a threat to someone's safety.
+
+6. HINTS
+6.1 A hint is a general, vague clue about a sender, such as a range for age or birth month or a letter in a first name. Hints are based on details the sender chose to share or saved on their profile.
+6.2 Hints are for entertainment only. We do not promise that a hint is accurate or complete. Details typed in by guests are self-reported and may be false. A hint is never proof of who sent a message.
+6.3 If the sender did not provide the information behind a hint, the hint is shown to you free of charge.
+6.4 Hint prices are shown in the app before you confirm a purchase. Once a hint is unlocked it cannot be refunded, unless the problem was caused by a technical error on our side.
+6.5 When a hint is purchased, 50% of the price is credited to the wallet of the person who sent the message, if the message can be linked to an Unmaskr account. If it cannot, Unmaskr keeps the full amount. Unmaskr keeps the remainder in every case.
+6.6 You must not use hints to harass, stalk, threaten, expose or harm anyone.
+
+7. YOUR WALLET
+7.1 Your wallet shows a balance in Nigerian naira (NGN) that you can spend on hints or withdraw as set out in section 9.
+7.2 The wallet is a record kept by Unmaskr. It is not a bank account, it earns no interest, and it is not covered by deposit insurance.
+7.3 Wallet balances do not expire. Even if an account is inactive for many years, the balance remains yours and can be claimed at any time.
+7.4 We keep records of all wallet activity, and you can see your own transaction history in the app.
+
+8. ADDING MONEY (TOP-UPS)
+8.1 You add money by bank transfer through our payment partner, Bachs. For each top-up you receive a temporary account number that is valid for a limited time (shown on the payment page). Pay the exact amount before it expires.
+8.2 The amount you pay includes our payment partner's processing fee (currently 1.5% of the payment, subject to a cap). Your wallet is credited with the amount you chose to add. We show the total you will pay before you pay it.
+8.3 Your wallet is credited automatically once the payment is confirmed, usually within a minute. If it is not credited, contact support with the amount, the time and your transfer reference. A payment that is late, incomplete or sent to the wrong account may not be credited automatically, and we will help you resolve it.
+8.4 Pay only from a bank account or card that belongs to you, and only with money you have the right to use.
+8.5 Fees and limits may change. A change does not affect payments you have already made.
+
+9. WITHDRAWALS
+9.1 The minimum withdrawal is NGN 1,000. We may change this amount, and the current amount is always shown in the app.
+9.2 A charge of NGN 50 is deducted from each withdrawal to a bank account, to cover the cost of the transfer. For example, if you withdraw NGN 1,000 you receive NGN 950. The charge is shown before you confirm.
+9.3 Withdrawals are paid only to a Nigerian bank account in your own name. The account holder name returned by your bank must match the full name on your Unmaskr account. We check this through our payment partner. If the names do not match, we may refuse or hold the withdrawal and ask you for more information.
+9.4 We review withdrawals. Most are processed quickly, but we do not promise a particular time. We may delay, hold or refuse a withdrawal if we reasonably suspect fraud or misuse, if you have broken these Terms, if we need to verify your identity, or if the law requires us to.
+9.5 The amount leaves your wallet as soon as you request a withdrawal. If the withdrawal fails or is refused, the amount is returned to your wallet.
+9.6 Check your bank details carefully before you submit. We are not responsible for money sent to an account number you entered incorrectly, although we will help you try to recover it.
+9.7 Airtime withdrawals, where offered, are processed manually and may take longer.
+
+10. RULES OF USE
+You must not use Unmaskr to:
+(a) send threats, or to harass, bully or intimidate anyone;
+(b) send hateful, discriminatory or abusive content;
+(c) send or request sexual content involving a minor, or sexual content to anyone under 18;
+(d) pretend to be another person or organisation;
+(e) share anyone's private information without their permission;
+(f) send spam, advertising or the same message repeatedly;
+(g) commit or help with fraud, money laundering, or the use of stolen money or stolen cards;
+(h) top up or withdraw using a bank account or card that is not yours;
+(i) break, overload, copy or reverse-engineer the service, or use bots or automated tools;
+(j) get around our filters, rate limits or security, or create several accounts to abuse the service;
+(k) break any law.
+Offensive language is filtered automatically. If you try to get around the filters by using alternative spellings, you remain fully responsible for what you send.
+
+11. REPORTS AND ENFORCEMENT
+11.1 If you receive a harmful message, use the report option in the app or email support@unmaskr.site.
+11.2 We review reports and may remove content, warn you, limit features, suspend or close accounts, and take other steps we consider appropriate.
+11.3 If we suspect fraud we may freeze a wallet while we investigate. Where the law allows, we will return what belongs to you, less any amounts obtained through fraud or in breach of these Terms.
+11.4 We may report suspected crimes to the authorities and cooperate with them.
+
+12. YOUR CONTENT
+You keep ownership of the messages and other content you send. You give us a non-exclusive, worldwide, royalty-free licence to store, display and deliver that content to run Unmaskr, and to let recipients share it as described in section 5.3.
+
+13. THE SERVICE
+We work hard to keep Unmaskr available, but we cannot promise it will always be uninterrupted or error-free. We may carry out maintenance, and we may change, pause or remove features. Games on Unmaskr are free, for entertainment only, and carry no money prizes.
+
+14. THIRD-PARTY SERVICES
+We rely on other companies for payments, hosting and email. Their own terms may apply to the services they provide. We are not responsible for their acts or omissions, but we will help you if a problem arises with them through Unmaskr.
+
+15. DISCLAIMERS AND LIMIT OF LIABILITY
+15.1 Unmaskr is provided "as is" and "as available". We are not responsible for the content of messages sent by users.
+15.2 To the fullest extent permitted by Nigerian law, we are not liable for indirect, incidental or consequential loss, or for loss of profit, data or reputation.
+15.3 To the fullest extent permitted by law, our total liability to you for any claim is limited to the total amount you paid to Unmaskr in the 12 months before the claim arose.
+15.4 Nothing in these Terms limits liability that cannot lawfully be limited, including liability for fraud, or any rights you have as a consumer under Nigerian law.
+
+16. INDEMNITY
+You agree to compensate Unmaskr for loss or damage that results from your breach of these Terms or your unlawful use of the service.
+
+17. CLOSING YOUR ACCOUNT
+You may stop using Unmaskr at any time and may ask us to close your account. Please withdraw your balance first. If your balance is below the minimum withdrawal, contact support and we will help. We may suspend or close your account for breaking these Terms. See the Privacy Policy for what happens to your information.
+
+18. CHANGES TO THESE TERMS
+We may update these Terms from time to time. The date at the top shows when they were last changed. For important changes we will tell you in the app or by email. If you keep using Unmaskr after a change takes effect, you accept the new Terms.
+
+19. GOVERNING LAW AND DISPUTES
+These Terms are governed by the laws of the Federal Republic of Nigeria. If you have a complaint, please contact support first so we can try to resolve it within 30 days. If that does not work, either of us may take the matter to the courts of competent jurisdiction in Nigeria.
+
+20. GENERAL
+These Terms and the Privacy Policy are the entire agreement between you and Unmaskr about the service. If any part is found unenforceable, the rest stays in force. If we do not enforce a right straight away, we have not given it up. You may not transfer your rights under these Terms to anyone else.
+
+21. CONTACT
+Email: support@unmaskr.site
+We usually reply within 24 hours.`;
+
+const PRIVACY = `PRIVACY POLICY
+Unmaskr Limited
+Last updated: October 2026
+
+This policy explains what personal information Unmaskr collects, why we collect it, who we share it with, and the rights you have. We handle your information in line with the Nigeria Data Protection Act 2023 and related regulations.
+
+1. WHO IS RESPONSIBLE
+Unmaskr Limited, a company registered in Nigeria, decides how and why your information is used (the "data controller"). You can contact us about privacy at support@unmaskr.site.
+
+2. INFORMATION WE COLLECT
+Account information: your full name, username, email address, date of birth, age group, gender, country, profile photo (if you add one), and your password (stored in protected form by our authentication provider).
+Messages and activity: the messages you receive, your replies, reactions, hints you unlock, and your game activity.
+Information sent with a message: when someone sends a message, they may choose to share gender, birth month, age, a first name and an email address. If they are logged in, we use the details saved on their profile instead. We also store a random device token that helps us stop spam and abuse.
+Wallet and payment information: top-ups and withdrawals, amounts, dates and references; the bank name, account number and account holder name you give us for withdrawals; the account holder name returned by your bank; and payer details sent to us with a top-up (such as the payer's name and bank).
+Support information: messages you send to support and our replies.
+Technical information: log information such as date, time and error messages, and information stored in your browser (see section 9).
+
+3. HOW WE USE YOUR INFORMATION AND WHY
+To run your account and deliver messages, replies and notifications (to carry out our agreement with you).
+To create hints from the details a sender chose to share. Hints are vague on purpose, for example an age range or one letter of a name. We never show the recipient a sender's email address or exact details.
+To process top-ups and withdrawals, check that the bank account name matches your Unmaskr name, and keep records of transactions (to carry out our agreement with you and meet legal duties).
+To prevent fraud, abuse and spam, enforce our Terms, and keep people safe (our legitimate interest, and legal duties).
+To answer support requests and contact you about your account (to carry out our agreement with you).
+To meet legal and regulatory duties and respond to valid requests from authorities.
+Where we rely on your consent, such as optional details you choose to share, you can withdraw that consent at any time.
+
+4. WHO WE SHARE INFORMATION WITH
+We do not sell your personal information. We share it only as follows:
+Service providers who help us run Unmaskr: our database and hosting provider, our payment partner (which processes top-ups and withdrawals and verifies bank account details), and our email delivery provider. They may use your information only to provide their services to us.
+Authorities and the courts, when we receive a valid legal request, or where we believe disclosure is needed to prevent harm or a crime.
+A buyer or successor, if Unmaskr Limited is ever sold or merged, subject to the protections in this policy.
+Recipients of your messages see the message and the hints they unlock. They do not see your identity.
+
+5. TRANSFERS OUTSIDE NIGERIA
+Some of our service providers store or process information outside Nigeria. Where this happens we take steps to make sure your information stays protected to a standard that is at least equal to Nigerian law.
+
+6. HOW LONG WE KEEP INFORMATION
+We keep your information while your account is open. After you close it, we delete or anonymise your personal information, except what we must keep, for example transaction records and records needed to prevent fraud, which we keep for as long as the law requires.
+
+7. YOUR RIGHTS
+You can ask us to: give you a copy of your information; correct information that is wrong; delete your information; restrict or object to certain uses; send your information to you in a usable format; and stop using information that relies on your consent. To use any of these rights, email support@unmaskr.site. We may need to confirm your identity first, and some requests may be limited where we are required by law to keep information.
+You also have the right to complain to the Nigeria Data Protection Commission.
+
+8. SECURITY
+We use reasonable technical and organisational measures to protect your information, including access controls and encrypted connections. No system is perfectly secure, so please use a strong password and keep it private. If a breach affects your personal information, we will notify you and the authorities as the law requires.
+
+9. COOKIES AND BROWSER STORAGE
+We use browser storage to keep you logged in and to store a random device token that helps us prevent spam. We do not use this storage for advertising.
+
+10. CHILDREN
+Unmaskr is for people aged 16 and over. We do not knowingly collect information from anyone younger. If you believe a child under 16 has created an account, contact us and we will remove it.
+
+11. CHANGES TO THIS POLICY
+We may update this policy. The date at the top shows when it was last changed, and we will tell you about important changes in the app or by email.
+
+12. CONTACT
+Email: support@unmaskr.site`;
 
 // ── PROFANITY FILTER ───────────────────────────────────────────────────────────
 const PROFANITY = ["fuck","shit","bitch","damn","ass","crap","bastard","idiot","stupid"];
@@ -856,8 +1029,8 @@ const Landing = ({ goTo }) => {
       </div>
       <footer style={{padding:"32px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:16,borderTop:"1px solid rgba(0,0,0,0.08)",fontSize:"0.83rem",color:"#888"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}><LogoFull height={22}/></div>
-        <div style={{display:"flex",gap:22}}>{["Privacy","Terms","Safety","Contact"].map(l=><span key={l} style={{cursor:"pointer"}} onClick={()=>goTo("terms")}>{l}</span>)}</div>
-        <span>© 2025 Unmaskr. All rights reserved.</span>
+        <div style={{display:"flex",gap:22}}>{["Privacy","Terms","Safety","Contact"].map(l=><span key={l} style={{cursor:"pointer"}} onClick={()=>goTo(l==="Privacy"?"privacy":"terms")}>{l}</span>)}</div>
+        <span>© 2026 Unmaskr Limited. All rights reserved.</span>
       </footer>
     </div>
   );
@@ -1009,7 +1182,10 @@ const Signup = ({ goTo, onSignupComplete, signupsDisabled }) => {
               <span><strong>How we use your data:</strong> Your name and email are used only for your account. Gender, birth month, and age group generate anonymous hints only. We never sell your data and your wallet balance never expires.</span>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:14}}>
-              <Inp placeholder="Your full name" value={form.name} onChange={upd("name")}/>
+              <div>
+                <Inp placeholder="Your full name" value={form.name} onChange={upd("name")}/>
+                <p style={{fontSize:"0.78rem",color:"#aaa",marginTop:6,lineHeight:1.5}}>Use your real full name — it's used to match your bank account when you withdraw.</p>
+              </div>
               <Inp placeholder="Email address" type="email" value={form.email} onChange={upd("email")}/>
               <div>
                 <Inp placeholder="Password" type="password" value={form.password} onChange={e=>{upd("password")(e);setPwErr(validatePw(e.target.value));}}/>
@@ -1064,16 +1240,16 @@ const Signup = ({ goTo, onSignupComplete, signupsDisabled }) => {
             <h1 className="syne" style={{fontSize:"1.9rem",fontWeight:800,letterSpacing:"-0.02em",marginBottom:8}}>Pick your username</h1>
             <p style={{color:"#888",fontSize:"0.9rem",marginBottom:32,fontWeight:300}}>This becomes your unique Unmaskr link.</p>
             <div style={{position:"relative"}}>
-              <div style={{position:"absolute",left:18,top:"50%",transform:"translateY(-50%)",fontSize:"0.9rem",color:"#aaa",pointerEvents:"none"}}>unmaskr.com/</div>
+              <div style={{position:"absolute",left:18,top:"50%",transform:"translateY(-50%)",fontSize:"0.9rem",color:"#aaa",pointerEvents:"none"}}>unmaskr.site/</div>
               <Inp placeholder="yourname" value={form.username} onChange={upd("username")} style={{paddingLeft:130}}/>
             </div>
-            {form.username && <div style={{marginTop:10,padding:"10px 14px",background:"#f0fff4",border:"1px solid #86efac",borderRadius:10,fontSize:"0.83rem",color:"#166534",display:"flex",alignItems:"center",gap:8}}><Icons.check s={14} c="#16a34a"/> unmaskr.com/{form.username} is available!</div>}
+            {form.username && <div style={{marginTop:10,padding:"10px 14px",background:"#f0fff4",border:"1px solid #86efac",borderRadius:10,fontSize:"0.83rem",color:"#166534",display:"flex",alignItems:"center",gap:8}}><Icons.check s={14} c="#16a34a"/> unmaskr.site/{form.username} is available!</div>}
             <Btn onClick={handleSignup} style={{width:"100%",marginTop:20,padding:"15px"}} disabled={!form.username||loading}>{loading?"Creating your account...":"Create my link"}</Btn>
 {signupError && <p style={{color:"#ef4444",fontSize:"0.82rem",marginTop:10,textAlign:"center"}}>{signupError}</p>}
             <div style={{textAlign:"center",marginTop:14}}><span style={{fontSize:"0.85rem",color:"#aaa",cursor:"pointer"}} onClick={()=>setStep(2)}>← Back</span></div>
           </>}
 
-          <p style={{textAlign:"center",marginTop:24,fontSize:"0.78rem",color:"#bbb",lineHeight:1.6}}>By signing up you agree to our <span style={{textDecoration:"underline",cursor:"pointer"}} onClick={()=>goTo("terms")}>Terms of Service</span></p>
+          <p style={{textAlign:"center",marginTop:24,fontSize:"0.78rem",color:"#bbb",lineHeight:1.6}}>By signing up you agree to our <span style={{textDecoration:"underline",cursor:"pointer"}} onClick={()=>goTo("terms")}>Terms of Service</span> and <span style={{textDecoration:"underline",cursor:"pointer"}} onClick={()=>goTo("privacy")}>Privacy Policy</span></p>
         </div>
       </div>
     </div>
@@ -1100,7 +1276,7 @@ const Login = ({ goTo, onLoginComplete }) => {
     const { data: prof } = await supabase.from("profiles").select("status").eq("id", data.user.id).single();
     if (prof?.status === "suspended") {
       await supabase.auth.signOut();
-      setErr("This account has been suspended. Contact support@unmaskr.com for more information.");
+      setErr("This account has been suspended. Contact support@unmaskr.site for more information.");
       setLoading(false);
       return;
     }
@@ -1229,18 +1405,22 @@ const ForgotPassword = ({ goTo }) => {
 };
 
 // ── TERMS ──────────────────────────────────────────────────────────────────────
-const Terms = ({ goTo, fromSend, onAccept }) => (
+const Terms = ({ goTo, fromSend, onAccept, kind="terms" }) => {
+  const isPrivacy = kind==="privacy";
+  return (
   <div style={{minHeight:"100vh",background:"#fafaf8",display:"flex",flexDirection:"column"}}>
     <div style={{padding:"20px 32px",display:"flex",alignItems:"center",gap:16,borderBottom:"1px solid rgba(0,0,0,0.07)",position:"sticky",top:0,background:"#fafaf8",zIndex:10}}>
       <BackBtn onClick={()=>fromSend?onAccept(false):goTo("landing")}/>
-      <span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>Terms & Conditions</span>
+      <span className="syne" style={{fontWeight:800,fontSize:"1.1rem"}}>{isPrivacy?"Privacy Policy":"Terms & Conditions"}</span>
     </div>
     <div style={{flex:1,maxWidth:680,margin:"0 auto",padding:"40px 28px",width:"100%"}}>
-      <div style={{background:"white",borderRadius:20,padding:"32px 28px",border:"1px solid rgba(0,0,0,0.08)",whiteSpace:"pre-wrap",fontSize:"0.88rem",lineHeight:1.9,color:"#444"}}>{TERMS}</div>
+      <div style={{background:"white",borderRadius:20,padding:"32px 28px",border:"1px solid rgba(0,0,0,0.08)",whiteSpace:"pre-wrap",fontSize:"0.88rem",lineHeight:1.9,color:"#444"}}>{isPrivacy?PRIVACY:TERMS}</div>
+      {!fromSend && <p style={{textAlign:"center",marginTop:20,fontSize:"0.88rem",color:"#ff5c3a",cursor:"pointer",fontWeight:500}} onClick={()=>goTo(isPrivacy?"terms":"privacy")}>Read our {isPrivacy?"Terms & Conditions":"Privacy Policy"} →</p>}
       {fromSend && <div style={{display:"flex",gap:12,marginTop:24}}><Btn outline onClick={()=>onAccept(false)} style={{flex:1}}>Decline</Btn><Btn onClick={()=>onAccept(true)} style={{flex:1}}>I Accept</Btn></div>}
     </div>
   </div>
-);
+  );
+};
 // ── INBOX ──────────────────────────────────────────────────────────────────────
 const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hintsDisabled=false }) => {
   const cur = currency || CURRENCIES.NG;
@@ -1295,6 +1475,16 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
   const [receipt,setReceipt] = useState(null);
   const [unlocking,setUnlocking] = useState(false);
   const unread = messages.filter(m=>!m.read).length;
+
+  // Opens the phone's share sheet (WhatsApp, Instagram, Status...) with the user's link
+  const shareMyLink = async () => {
+    const url = `${window.location.origin}/${username}`;
+    const text = "Send me an anonymous message on Unmaskr";
+    try {
+      if (navigator.share) { await navigator.share({ title:"Unmaskr", text, url }); return; }
+    } catch (e) { if (e && e.name==="AbortError") return; }
+    window.open(`https://wa.me/?text=${encodeURIComponent(text+" "+url)}`,"_blank");
+  };
 
   const openMsg = async msg => {
     if (!msg.read) {
@@ -1389,8 +1579,8 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
             <button onClick={()=>{navigator.clipboard?.writeText(`${window.location.origin}/${username}`);setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{padding:"10px 16px",borderRadius:50,border:"1px solid rgba(255,255,255,0.2)",background:"transparent",color:"white",fontSize:"0.83rem",fontWeight:500,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
               <Icons.copy s={14} c="white"/>{copied?"Copied!":"Copy link"}
             </button>
-            <button onClick={()=>goTo("send",{username})} style={{padding:"10px 16px",borderRadius:50,border:"none",background:"#ff5c3a",color:"white",fontSize:"0.83rem",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-              <Icons.eye s={14} c="white"/>Preview
+            <button onClick={shareMyLink} style={{padding:"10px 16px",borderRadius:50,border:"none",background:"#ff5c3a",color:"white",fontSize:"0.83rem",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+              <Icons.share s={14} c="white"/>Share
             </button>
           </div>
         </div>
@@ -1716,9 +1906,8 @@ const Stats = ({ goTo, userId }) => {
       setHintsUnlocked(all.reduce((s,m)=>s+(m.hints_unlocked?.length||0),0));
       setWalletEarned((earnings||[]).reduce((s,t)=>s+Number(t.amount),0));
 
-      const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
       const buckets = [...Array(7)].map((_,i)=>{ const d=new Date(); d.setDate(d.getDate()-(6-i)); return d; });
-      setWeekData(buckets.map((d,i)=>({ d: days[i], m: all.filter(m=>new Date(m.created_at).toDateString()===d.toDateString()).length })));
+      setWeekData(buckets.map((d,i)=>({ d: d.toLocaleDateString(undefined,{weekday:"short"}), m: all.filter(m=>new Date(m.created_at).toDateString()===d.toDateString()).length })));
 
       const mostLoved = [...all].sort((a,b)=>(b.reactions?.length||0)+(b.hints_unlocked?.length||0)-((a.reactions?.length||0)+(a.hints_unlocked?.length||0)))[0];
       setTopMessage(mostLoved || null);
@@ -3040,7 +3229,6 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
   const [photoErr,setPhotoErr] = useState("");
   const fileInputRef = useRef(null);
   const [toggles,setToggles] = useState({messages:true,discover:true,filter:true,emailNotif:false,newMsg:true,gameInvite:true,hintNotif:false,updates:false});
-  const [darkMode,setDarkMode] = useState("auto");
   const [contactSubject,setContactSubject] = useState("Payment issue");
   const [contactMessage,setContactMessage] = useState("");
   const [contactSubmitting,setContactSubmitting] = useState(false);
@@ -3123,7 +3311,6 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
     {key:"notifications",icon:<Icons.bell s={18} c="#555"/>,label:"Notifications",desc:"Manage alerts and emails"},
     {key:"privacy",icon:<Icons.shield s={18} c="#555"/>,label:"Privacy & Safety",desc:"Block users, message filters"},
     {key:"terms",icon:<Icons.doc s={18} c="#555"/>,label:"Terms & Privacy",desc:"Read our policies"},
-    {key:"appearance",icon:<Icons.sun s={18} c="#555"/>,label:"Appearance",desc:"Light or dark mode"},
     {key:"account",icon:<Icons.mail s={18} c="#555"/>,label:"Account Details",desc:"Change email address"},
     {key:"password",icon:<Icons.lock s={18} c="#555"/>,label:"Change Password",desc:"Update your password"},
     {key:"photo",icon:<Icons.photo s={18} c="#555"/>,label:"Profile Picture",desc:"Upload or change your photo"},
@@ -3218,7 +3405,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
         {q:"What if a withdrawal fails?",a:"If a withdrawal fails for any technical reason, the full amount is automatically returned to your wallet within 10 minutes."},
         {q:"How does Quiz Clash work?",a:"Everyone answers the same trivia questions, picked from the topics and difficulty the host chooses. Highest score wins — it's free to play, just for bragging rights."},
         {q:"What happens in a tie in Quiz Clash?",a:"Tied players share the win — you can always start a rematch among just the tied players to settle it."},
-        {q:"How do I contact support?",a:"Go to Settings → Contact Support. We typically reply within 24 hours at support@unmaskr.com."},
+        {q:"How do I contact support?",a:"Go to Settings → Contact Support. We typically reply within 24 hours at support@unmaskr.site."},
       ].map((item,i)=>(
         <div key={i} style={{background:"white",borderRadius:16,padding:"20px",marginBottom:12,border:"1px solid rgba(0,0,0,0.07)"}}>
           <p style={{fontWeight:600,marginBottom:8,fontSize:"0.95rem"}}>{item.q}</p>
@@ -3266,7 +3453,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
       </>
       )}
       <div style={{marginTop:24,padding:"14px",background:"#f3f2ef",borderRadius:12,textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-        <Icons.mail s={14} c="#666"/><p style={{fontSize:"0.83rem",color:"#666"}}>Or email: <strong>support@unmaskr.com</strong></p>
+        <Icons.mail s={14} c="#666"/><p style={{fontSize:"0.83rem",color:"#666"}}>Or email: <strong>support@unmaskr.site</strong></p>
       </div>
     </SubPage>
   );
@@ -3303,18 +3490,6 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
           <div><p style={{fontWeight:500,marginBottom:4,fontSize:"0.92rem"}}>{item.l}</p><p style={{fontSize:"0.8rem",color:"#aaa"}}>{item.d}</p></div>
           <Tog on={toggles[item.k]} onToggle={()=>setToggles(t=>({...t,[item.k]:!t[item.k]}))}/>
         </div>
-      ))}
-    </SubPage>
-  );
-
-  if(sec==="appearance") return (
-    <SubPage title="Appearance" onBack={()=>setSec(null)}>
-      <p style={{fontSize:"0.88rem",color:"#888",marginBottom:24,fontWeight:300}}>Choose how Unmaskr looks. Automatic follows your device.</p>
-      {[{k:"auto",l:"Automatic",d:"Follows your device setting"},{k:"light",l:"Light",d:"Always light mode"},{k:"dark",l:"Dark",d:"Always dark mode"}].map(m=>(
-        <button key={m.k} onClick={()=>setDarkMode(m.k)} style={{width:"100%",padding:"16px 18px",borderRadius:14,border:`1.5px solid ${darkMode===m.k?"#0e0e0e":"rgba(0,0,0,0.1)"}`,background:darkMode===m.k?"#0e0e0e":"white",color:darkMode===m.k?"white":"#0e0e0e",cursor:"pointer",textAlign:"left",marginBottom:10,transition:"all 0.2s",display:"flex",alignItems:"center",gap:12}}>
-          <Icons.sun s={18} c={darkMode===m.k?"white":"#555"}/>
-          <div><p style={{fontWeight:600,marginBottom:2}}>{m.l}</p><p style={{fontSize:"0.78rem",opacity:0.6}}>{m.d}</p></div>
-        </button>
       ))}
     </SubPage>
   );
@@ -3388,7 +3563,7 @@ const calcAge = (dobStr) => {
 
 // Screens that are NOT usernames — anything else in the URL path is treated
 // as someone's username and routes straight to the send-message page.
-const RESERVED_PATHS = ["landing","signup","login","forgot","terms","inbox","send","stats","wallet","games","game-lobby","game-quiz","settings","customization","join","join-quiz"];
+const RESERVED_PATHS = ["landing","signup","login","forgot","terms","inbox","send","stats","wallet","games","game-lobby","game-quiz","settings","customization","join","join-quiz","privacy"];
 
 const getInitialRouteFromURL = () => {
   const path = window.location.pathname.replace(/^\/+|\/+$/g, ""); // strip leading/trailing slashes
@@ -3545,7 +3720,7 @@ export default function App() {
         <div style={{maxWidth:380}}>
           <div style={{width:64,height:64,borderRadius:"50%",background:"#fff5f5",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}><Icons.warning s={28} c="#ef4444"/></div>
           <h2 className="syne" style={{fontSize:"1.6rem",fontWeight:800,marginBottom:12}}>Account suspended</h2>
-          <p style={{color:"#888",fontSize:"0.9rem",lineHeight:1.7,marginBottom:24,fontWeight:300}}>This account has been suspended. Contact <strong>support@unmaskr.com</strong> if you believe this is a mistake.</p>
+          <p style={{color:"#888",fontSize:"0.9rem",lineHeight:1.7,marginBottom:24,fontWeight:300}}>This account has been suspended. Contact <strong>support@unmaskr.site</strong> if you believe this is a mistake.</p>
           <Btn onClick={()=>{setSuspendedNotice(false);goTo("landing");}} style={{width:"100%"}}>Back to homepage</Btn>
         </div>
       </div>
@@ -3573,6 +3748,7 @@ export default function App() {
     login:         <Login goTo={goTo}/>,
     forgot:        <ForgotPassword goTo={goTo}/>,
     terms:         <Terms goTo={goTo} fromSend={false}/>,
+    privacy:       <Terms goTo={goTo} fromSend={false} kind="privacy"/>,
     inbox:         <Inbox goTo={goTo} currency={currency} isMinor={isMinor} userId={session?.user?.id} username={profile?.username||"yourname"} hintsDisabled={platformSettings?.hint_purchases_enabled===false}/>,
     send:          <SendPage goTo={goTo} params={params} receiverCurrency={currency}/>,
     stats:         <Stats goTo={goTo} userId={session?.user?.id}/>,
