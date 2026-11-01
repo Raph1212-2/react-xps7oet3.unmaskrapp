@@ -404,10 +404,10 @@ Unmaskr is an entertainment platform. It is not a bank, a payment institution or
 4. YOUR ACCOUNT
 4.1 When you sign up, use your real full name. We use that name to process withdrawals (see section 9), so it must match the name on the bank account you withdraw to.
 4.2 Keep your password secret. You are responsible for everything done through your account. Tell us straight away at support@unmaskr.site if you think someone else has used it.
-4.3 We may restrict changes to the name on your account, especially after you have requested a withdrawal. If you need a correction, contact support.
+4.3 After you request your first withdrawal, the name and date of birth on your account are locked, because they are used to match your bank account and to create hints. If you need a correction, contact support.
 
 5. SENDING AND RECEIVING ANONYMOUS MESSAGES
-5.1 Your identity is not shown to the person you message. Senders may choose to share optional details (such as gender, birth month, age, first name and an email address for replies). If you are logged in, the details saved on your profile are used instead of anything typed on the message page.
+5.1 Your identity is not shown to the person you message. Senders may choose to share optional details (such as gender, birth month, age, first name and an email address for replies). If you are logged in, the details saved on your profile are used instead of anything typed on the message page. If you have an Unmaskr account but are not logged in, you can verify your email with a one-time code on the message page, and your profile details are then used.
 5.2 Those details are used only to create hints and to let us contact you about replies, as described in the Privacy Policy. We never show a sender's email address or exact details to the recipient.
 5.3 Recipients can react to a message, reply to it, and share its text as an image. The image does not include the sender's identity. By sending a message you accept that it may be shared in this way.
 5.4 Anonymity does not give anyone permission to abuse others. See section 10.
@@ -418,7 +418,7 @@ Unmaskr is an entertainment platform. It is not a bank, a payment institution or
 6.2 Hints are for entertainment only. We do not promise that a hint is accurate or complete. Details typed in by guests are self-reported and may be false. A hint is never proof of who sent a message.
 6.3 If the sender did not provide the information behind a hint, the hint is shown to you free of charge.
 6.4 Hint prices are shown in the app before you confirm a purchase. Once a hint is unlocked it cannot be refunded, unless the problem was caused by a technical error on our side.
-6.5 When a hint is purchased, 50% of the price is credited to the wallet of the person who sent the message, if the message can be linked to an Unmaskr account. If it cannot, Unmaskr keeps the full amount. Unmaskr keeps the remainder in every case.
+6.5 When a hint is purchased, 50% of the price is credited to the wallet of the person who sent the message, if the message was sent while logged in to an Unmaskr account (including after verifying its email with a one-time code). If not, Unmaskr keeps the full amount. Unmaskr keeps the remainder in every case.
 6.6 You must not use hints to harass, stalk, threaten, expose or harm anyone.
 
 7. YOUR WALLET
@@ -483,7 +483,7 @@ We rely on other companies for payments, hosting and email. Their own terms may 
 You agree to compensate Unmaskr for loss or damage that results from your breach of these Terms or your unlawful use of the service.
 
 17. CLOSING YOUR ACCOUNT
-You may stop using Unmaskr at any time and may ask us to close your account. Please withdraw your balance first. If your balance is below the minimum withdrawal, contact support and we will help. We may suspend or close your account for breaking these Terms. See the Privacy Policy for what happens to your information.
+You may stop using Unmaskr at any time. You can delete your account yourself in Settings under Privacy & Safety, or ask us to close it. Please withdraw your balance first. If your balance is below the minimum withdrawal, contact support and we will help. We may suspend or close your account for breaking these Terms. See the Privacy Policy for what happens to your information.
 
 18. CHANGES TO THESE TERMS
 We may update these Terms from time to time. The date at the top shows when they were last changed. For important changes we will tell you in the app or by email. If you keep using Unmaskr after a change takes effect, you accept the new Terms.
@@ -516,7 +516,7 @@ Support information: messages you send to support and our replies.
 Technical information: log information such as date, time and error messages, and information stored in your browser (see section 9).
 
 3. HOW WE USE YOUR INFORMATION AND WHY
-To run your account and deliver messages, replies and notifications (to carry out our agreement with you).
+To run your account and deliver messages, replies and notifications (to carry out our agreement with you). When you verify your email on a message page, we email you a one-time code.
 To create hints from the details a sender chose to share. Hints are vague on purpose, for example an age range or one letter of a name. We never show the recipient a sender's email address or exact details.
 To process top-ups and withdrawals, check that the bank account name matches your Unmaskr name, and keep records of transactions (to carry out our agreement with you and meet legal duties).
 To prevent fraud, abuse and spam, enforce our Terms, and keep people safe (our legitimate interest, and legal duties).
@@ -538,7 +538,7 @@ Some of our service providers store or process information outside Nigeria. Wher
 We keep your information while your account is open. After you close it, we delete or anonymise your personal information, except what we must keep, for example transaction records and records needed to prevent fraud, which we keep for as long as the law requires.
 
 7. YOUR RIGHTS
-You can ask us to: give you a copy of your information; correct information that is wrong; delete your information; restrict or object to certain uses; send your information to you in a usable format; and stop using information that relies on your consent. To use any of these rights, email support@unmaskr.site. We may need to confirm your identity first, and some requests may be limited where we are required by law to keep information.
+You can ask us to: give you a copy of your information; correct information that is wrong; delete your information; restrict or object to certain uses; send your information to you in a usable format; and stop using information that relies on your consent. You can delete your account yourself in Settings under Privacy & Safety (your wallet must be empty first). For any other request, email support@unmaskr.site. We may need to confirm your identity first, and some requests may be limited where we are required by law to keep information.
 You also have the right to complain to the Nigeria Data Protection Commission.
 
 8. SECURITY
@@ -972,7 +972,7 @@ const Landing = ({ goTo }) => {
         </div>
       </section>
       <div style={{display:"flex",justifyContent:"center",gap:40,flexWrap:"wrap",padding:"56px 24px",borderTop:"1px solid rgba(0,0,0,0.07)",borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-        {[["100K+","Messages sent"],["50K+","Active users"],["100%","Anonymous"],["Free","To get started"]].map(([n,l])=>(
+        {[["100%","Anonymous senders"],["Free","To get started"],["2","Games to play"],["24/7","Share your link anywhere"]].map(([n,l])=>(
           <div key={l} style={{textAlign:"center"}}><div className="syne" style={{fontSize:"2.3rem",fontWeight:800}}>{n}</div><div style={{fontSize:"0.83rem",color:"#888",marginTop:4}}>{l}</div></div>
         ))}
       </div>
@@ -1024,7 +1024,7 @@ const Landing = ({ goTo }) => {
       </div>
       <div style={{padding:"90px 32px",textAlign:"center",background:"#f3f2ef"}}>
         <h2 className="syne" style={{fontSize:"clamp(2rem,5vw,3.6rem)",fontWeight:800,letterSpacing:"-0.03em",lineHeight:1.1,maxWidth:560,margin:"0 auto"}}>Ready to find out what people really think?</h2>
-        <p style={{margin:"20px auto 0",maxWidth:380,color:"#666",fontSize:"0.98rem",fontWeight:300,lineHeight:1.7}}>Join thousands already using Unmaskr.</p>
+        <p style={{margin:"20px auto 0",maxWidth:380,color:"#666",fontSize:"0.98rem",fontWeight:300,lineHeight:1.7}}>Create your link in under a minute and find out.</p>
         <Btn onClick={()=>goTo("signup")} style={{marginTop:36,padding:"16px 38px",fontSize:"1rem"}}>Create your free link</Btn>
       </div>
       <footer style={{padding:"32px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:16,borderTop:"1px solid rgba(0,0,0,0.08)",fontSize:"0.83rem",color:"#888"}}>
@@ -1231,6 +1231,9 @@ const Signup = ({ goTo, onSignupComplete, signupsDisabled }) => {
                 <input type="checkbox" checked={form.dobConfirmed} onChange={e=>setForm(f=>({...f,dobConfirmed:e.target.checked}))} style={{marginTop:2,width:16,height:16,flexShrink:0}}/>
                 <span style={{fontSize:"0.82rem",color:"#666",lineHeight:1.6}}>I confirm my date of birth is correct and I am at least 16 years old.</span>
               </label>
+              <div style={{background:"#fff8f0",border:"1px solid rgba(255,92,58,0.18)",borderRadius:12,padding:"12px 14px",fontSize:"0.8rem",color:"#666",lineHeight:1.6,display:"flex",gap:8}}>
+                <Icons.info s={14} c="#f97316"/><span>Your full name, age and birth month are used to process your withdrawals. After your first withdrawal request, your name and date of birth can't be changed.</span>
+              </div>
             </div>
             <Btn onClick={()=>setStep(3)} style={{width:"100%",marginTop:24,padding:"15px"}} disabled={!form.gender||!form.dob||!form.ageGroup||!form.dobConfirmed}>Continue</Btn>
             <div style={{textAlign:"center",marginTop:14}}><span style={{fontSize:"0.85rem",color:"#aaa",cursor:"pointer"}} onClick={()=>setStep(1)}>← Back</span></div>
@@ -1474,7 +1477,18 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
   const [shareMsg,setShareMsg] = useState(null);
   const [receipt,setReceipt] = useState(null);
   const [unlocking,setUnlocking] = useState(false);
+  const [reportOpen,setReportOpen] = useState(false);
+  const [reportSent,setReportSent] = useState(false);
+  const [reportErr,setReportErr] = useState("");
   const unread = messages.filter(m=>!m.read).length;
+
+  // Sends the message to your admin Complaints queue (and flags it) so it gets reviewed
+  const sendReport = async (reason) => {
+    setReportErr("");
+    const { error } = await supabase.rpc("report_message", { p_message_id: String(activeMsg.id), p_reason: reason });
+    if (error) { console.error("report_message failed:", error); setReportErr("Couldn't send your report — please try again."); return; }
+    setReportSent(true);
+  };
 
   // Opens the phone's share sheet (WhatsApp, Instagram, Status...) with the user's link
   const shareMyLink = async () => {
@@ -1495,6 +1509,7 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
     setActiveHints(getRandHints(msg.hints));
     setShowHints(msg.hints.length>0);
     setReplyText("");
+    setReportOpen(false); setReportSent(false); setReportErr("");
   };
 
   const [unlockError,setUnlockError] = useState("");
@@ -1643,10 +1658,28 @@ const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname", hin
             <button onClick={()=>setShareMsg(activeMsg.text)} style={{padding:"8px 14px",borderRadius:50,border:"1.5px solid rgba(0,0,0,0.1)",background:"white",cursor:"pointer",fontSize:"0.85rem",fontWeight:500,display:"flex",alignItems:"center",gap:6}}>
               <Icons.share s={14} c="#555"/>Share
             </button>
-            <button style={{padding:"8px 14px",borderRadius:50,border:"none",background:"transparent",cursor:"pointer",fontSize:"0.85rem",color:"#ff5c3a",fontWeight:500,display:"flex",alignItems:"center",gap:6}}>
+            <button onClick={()=>{setReportOpen(o=>!o);setReportSent(false);setReportErr("");}} style={{padding:"8px 14px",borderRadius:50,border:"none",background:"transparent",cursor:"pointer",fontSize:"0.85rem",color:"#ff5c3a",fontWeight:500,display:"flex",alignItems:"center",gap:6}}>
               <Icons.flag s={14} c="#ff5c3a"/>Report
             </button>
           </div>
+
+          {reportOpen && (
+            <div style={{background:"#fff8f0",border:"1px solid rgba(255,92,58,0.2)",borderRadius:14,padding:"14px 16px",marginBottom:18}}>
+              {reportSent ? (
+                <p style={{fontSize:"0.85rem",color:"#166534",lineHeight:1.6}}>Thank you — we've received your report and will review this message.</p>
+              ) : (
+                <>
+                  <p style={{fontSize:"0.82rem",fontWeight:600,marginBottom:10}}>Why are you reporting this message?</p>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {["Harassment or threats","Sexual content","Hate or abuse","Spam","Something else"].map(r=>(
+                      <button key={r} onClick={()=>sendReport(r)} style={{padding:"8px 12px",borderRadius:50,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",cursor:"pointer",fontSize:"0.78rem",color:"#555"}}>{r}</button>
+                    ))}
+                  </div>
+                  {reportErr && <p style={{fontSize:"0.78rem",color:"#ef4444",marginTop:10}}>{reportErr}</p>}
+                </>
+              )}
+            </div>
+          )}
 
           {activeMsg.replies.length>0&&(
             <div style={{marginBottom:16}}>
@@ -1745,7 +1778,40 @@ const isDarkColor = (hex) => {
   return (0.299*((n>>16)&255) + 0.587*((n>>8)&255) + 0.114*(n&255)) < 140;
 };
 
-const SendPage = ({ goTo, params, receiverCurrency }) => {
+const SendPage = ({ goTo, params, receiverCurrency, userId, profile }) => {
+  // Logged-in senders never type details: hints use what's saved on their profile
+  const loggedIn = !!(userId && profile);
+
+  // Optional: a guest who HAS an account verifies their email with a one-time code, which logs
+  // them in. Their saved profile is then used for hints, and they earn 50% of hint sales.
+  const [earnEmail,setEarnEmail] = useState("");
+  const [earnStep,setEarnStep] = useState("idle");   // idle | code
+  const [earnCode,setEarnCode] = useState("");
+  const [earnBusy,setEarnBusy] = useState(false);
+  const [earnErr,setEarnErr] = useState("");
+  const sendEarnCode = async () => {
+    if (!earnEmail.trim() || earnBusy) return;
+    setEarnBusy(true); setEarnErr("");
+    const { error } = await supabase.auth.signInWithOtp({ email: earnEmail.trim(), options: { shouldCreateUser: false } });
+    setEarnBusy(false);
+    if (error) {
+      const m = (error.message || "").toLowerCase();
+      setEarnErr(
+        m.includes("not allowed") || m.includes("signups") || m.includes("not found") ? "No Unmaskr account uses that email. You can create one free, or just send your message below."
+        : m.includes("rate") || m.includes("seconds") ? "Please wait a minute before asking for another code."
+        : "Couldn't send the code — please try again.");
+      return;
+    }
+    setEarnStep("code");
+  };
+  const verifyEarnCode = async () => {
+    if (earnCode.trim().length < 6 || earnBusy) return;
+    setEarnBusy(true); setEarnErr("");
+    const { error } = await supabase.auth.verifyOtp({ email: earnEmail.trim(), token: earnCode.trim(), type: "email" });
+    setEarnBusy(false);
+    if (error) { setEarnErr("That code is wrong or has expired."); return; }
+    // The login arrives through the app's auth listener, and this page switches to "logged in" by itself.
+  };
   const username = params?.username||"yourname";
   const [recipientProfile,setRecipientProfile] = useState(null);
 
@@ -1785,11 +1851,11 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
       const { error } = await supabase.from("messages").insert({
         recipient_id: recipientProfile.id,
         text: filtered,
-        sender_email: senderEmail || null,
-        sender_gender: gender || null,
-        sender_birth_period: birthMonth || null,
-        sender_age: age ? Number(age) : null,
-        sender_name: senderName.trim() || null,
+        sender_email: loggedIn ? (profile.email || null) : (senderEmail || null),
+        sender_gender: loggedIn ? (profile.gender && profile.gender!=="Prefer not to say" ? profile.gender : null) : (gender || null),
+        sender_birth_period: loggedIn ? (profile.dob ? MONTH_NAMES[Number(String(profile.dob).slice(5,7))-1] || null : null) : (birthMonth || null),
+        sender_age: loggedIn ? (calcAge(profile.dob)) : (age ? Number(age) : null),
+        sender_name: loggedIn ? (profile.name || null) : (senderName.trim() || null),
         sender_device_token: getGuestToken(),
       });
       if (error) {
@@ -1807,7 +1873,7 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
         <div style={{width:72,height:72,borderRadius:"50%",background:theme.accent,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}><Icons.check s={32} c="white"/></div>
         <h2 className="syne" style={{fontSize:"2rem",fontWeight:800,marginBottom:12}}>Message sent!</h2>
         <p style={{color:"#888",fontSize:"0.95rem",lineHeight:1.7,marginBottom:32,fontWeight:300}}>Your anonymous message has been delivered. They'll never know it was you.</p>
-        {senderEmail&&<p style={{fontSize:"0.83rem",color:"#888",marginBottom:16,padding:"12px 14px",background:"rgba(128,128,128,0.15)",borderRadius:10}}>We'll email <strong>{senderEmail}</strong> if {username} replies.</p>}
+        {(loggedIn?profile.email:senderEmail)&&<p style={{fontSize:"0.83rem",color:"#888",marginBottom:16,padding:"12px 14px",background:"rgba(128,128,128,0.15)",borderRadius:10}}>We'll email <strong>{loggedIn?profile.email:senderEmail}</strong> if {username} replies.</p>}
         <Btn onClick={()=>goTo("signup")} style={{width:"100%",padding:"15px",background:theme.accent}}>Create your own Unmaskr link</Btn>
         <p style={{marginTop:16,fontSize:"0.85rem",color:"#aaa",cursor:"pointer"}} onClick={()=>setSent(false)}>Send another</p>
       </div>
@@ -1830,6 +1896,36 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
           <textarea placeholder={`Say something honest to @${username}...`} value={msg} onChange={e=>e.target.value.length<=MAX&&setMsg(e.target.value)} rows={4} style={{width:"100%",padding:"14px 16px",borderRadius:14,border:"1.5px solid rgba(0,0,0,0.1)",background:"#fafaf8",fontSize:"0.95rem",resize:"none",lineHeight:1.6}}/>
           <div style={{textAlign:"right",fontSize:"0.75rem",color:msg.length>MAX*0.85?"#ff5c3a":"#ccc",marginTop:4}}>{msg.length}/{MAX}</div>
 
+          {!loggedIn && (
+            <div style={{marginTop:16,padding:"14px 16px",background:"#f8f8f6",borderRadius:14,border:"1px solid rgba(0,0,0,0.06)"}}>
+              <p style={{fontSize:"0.86rem",fontWeight:600,marginBottom:4}}>Have an Unmaskr account? <span style={{fontWeight:400,color:"#999"}}>(optional)</span></p>
+              <p style={{fontSize:"0.78rem",color:"#888",lineHeight:1.6,marginBottom:10}}>Verify your email, and if @{username} buys a hint on your message you earn <strong>50%</strong> of the hint price. No account? Just send your message below.</p>
+              {earnStep==="idle" ? (
+                <div style={{display:"flex",gap:8}}>
+                  <input type="email" placeholder="Your account email" value={earnEmail} onChange={e=>setEarnEmail(e.target.value)} style={{flex:1,minWidth:0,padding:"11px 14px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",fontSize:"0.88rem"}}/>
+                  <button onClick={sendEarnCode} disabled={!earnEmail.trim()||earnBusy} style={{padding:"11px 16px",borderRadius:12,border:"none",background:(!earnEmail.trim()||earnBusy)?"#ccc":theme.accent,color:"white",fontWeight:600,fontSize:"0.82rem",cursor:(!earnEmail.trim()||earnBusy)?"not-allowed":"pointer",whiteSpace:"nowrap"}}>{earnBusy?"Sending...":"Send code"}</button>
+                </div>
+              ) : (
+                <div>
+                  <p style={{fontSize:"0.78rem",color:"#666",marginBottom:8}}>We sent a 6-digit code to <strong>{earnEmail.trim()}</strong>.</p>
+                  <div style={{display:"flex",gap:8}}>
+                    <input inputMode="numeric" placeholder="6-digit code" value={earnCode} onChange={e=>setEarnCode(e.target.value.replace(/\D/g,"").slice(0,6))} style={{flex:1,minWidth:0,padding:"11px 14px",borderRadius:12,border:"1.5px solid rgba(0,0,0,0.12)",background:"white",fontSize:"0.88rem",letterSpacing:"0.15em"}}/>
+                    <button onClick={verifyEarnCode} disabled={earnCode.length<6||earnBusy} style={{padding:"11px 16px",borderRadius:12,border:"none",background:(earnCode.length<6||earnBusy)?"#ccc":theme.accent,color:"white",fontWeight:600,fontSize:"0.82rem",cursor:(earnCode.length<6||earnBusy)?"not-allowed":"pointer"}}>{earnBusy?"Checking...":"Verify"}</button>
+                  </div>
+                  <p style={{fontSize:"0.74rem",color:"#999",marginTop:8,cursor:"pointer"}} onClick={()=>{setEarnStep("idle");setEarnCode("");setEarnErr("");}}>Use a different email</p>
+                </div>
+              )}
+              {earnErr && <p style={{fontSize:"0.78rem",color:"#ef4444",marginTop:8,lineHeight:1.5}}>{earnErr}</p>}
+              <p style={{fontSize:"0.74rem",color:"#999",marginTop:10}}>New here? <span style={{color:theme.accent,textDecoration:"underline",cursor:"pointer",fontWeight:500}} onClick={()=>window.open(window.location.origin+"/signup","_blank")}>Create a free account</span> (opens in a new tab).</p>
+            </div>
+          )}
+
+          {loggedIn ? (
+            <div style={{marginTop:16,padding:"12px 14px",background:"#f8f8f6",borderRadius:12,fontSize:"0.8rem",color:"#666",lineHeight:1.6,display:"flex",gap:8}}>
+              <Icons.info s={14} c="#888"/><span>You're logged in as @{profile.username||"you"}, so hints about you use the details saved on your profile — nothing to fill in. If @{username} buys a hint on your message, you earn 50%. Your identity is never shown directly.</span>
+            </div>
+          ) : (
+          <>
           <div style={{marginTop:16}}>
             <label style={lbl}>Your gender <span style={opt}>(optional)</span></label>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -1860,8 +1956,11 @@ const SendPage = ({ goTo, params, receiverCurrency }) => {
           <div style={{marginTop:16}}>
             <label style={lbl}><span style={{display:"flex",alignItems:"center",gap:6}}><Icons.mail s={14} c="#aaa"/>Your email <span style={opt}>(optional — get notified if they reply)</span></span></label>
             <Inp placeholder="your@email.com" type="email" value={senderEmail} onChange={e=>setSenderEmail(e.target.value)}/>
-            <p style={{fontSize:"0.73rem",color:"#aaa",marginTop:5,display:"flex",alignItems:"center",gap:4}}><Icons.info s={12} c="#aaa"/>Unmaskr will email you if {username} replies. Your email stays private.</p>
+            <p style={{fontSize:"0.73rem",color:"#aaa",marginTop:5,display:"flex",alignItems:"center",gap:4}}><Icons.info s={12} c="#aaa"/>Unmaskr will email you if {username} replies. Your email stays private. If it belongs to an Unmaskr account, verify it above to earn and get replies in your inbox.</p>
           </div>
+
+          </>
+          )}
 
           <div style={{marginTop:20,padding:"14px 16px",background:"#f8f8f6",borderRadius:12,display:"flex",alignItems:"flex-start",gap:12}}>
             <input type="checkbox" checked={termsAccepted} onChange={e=>setTermsAccepted(e.target.checked)} style={{marginTop:2,cursor:"pointer",width:16,height:16,flexShrink:0}}/>
@@ -3233,6 +3332,31 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
   const [contactMessage,setContactMessage] = useState("");
   const [contactSubmitting,setContactSubmitting] = useState(false);
   const [contactSubmitted,setContactSubmitted] = useState(false);
+  const [deleting,setDeleting] = useState(false);
+  const [deleteErr,setDeleteErr] = useState("");
+
+  // Permanently deletes the account's personal data (money records are kept, as the law requires)
+  const deleteAccount = async () => {
+    const typed = window.prompt("This permanently deletes your Unmaskr account and personal details. Your wallet must be empty, and money records are kept as the law requires.\n\nType DELETE to confirm.");
+    if (typed !== "DELETE") return;
+    setDeleting(true); setDeleteErr("");
+    try {
+      const { data: files } = await supabase.storage.from("avatars").list(userId);
+      if (files && files.length) await supabase.storage.from("avatars").remove(files.map(f=>`${userId}/${f.name}`));
+    } catch (e) { /* best effort */ }
+    const { error } = await supabase.rpc("delete_my_account");
+    setDeleting(false);
+    if (error) {
+      console.error("delete_my_account failed:", error);
+      setDeleteErr(
+        error.message?.includes("balance_remaining") ? "Withdraw or spend your wallet balance first, then try again."
+        : error.message?.includes("pending_withdrawal") ? "You have a withdrawal in progress. Wait until it's paid, then try again."
+        : "Couldn't delete your account. Please email support@unmaskr.site."
+      );
+      return;
+    }
+    onLogout();
+  };
 
   const submitComplaint = async () => {
     if (!contactMessage.trim() || !userId) return;
@@ -3279,7 +3403,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
     setSaving(true); setSaveErr("");
     const { error } = await supabase.from("profiles").update({ name, username, gender }).eq("id", userId);
     setSaving(false);
-    if (error) { setSaveErr(error.message); return; }
+    if (error) { setSaveErr(error.message?.includes("name_locked") ? "Your name is locked because you've requested a withdrawal. Contact support@unmaskr.site to change it." : error.message); return; }
     setSaved(true);
     setTimeout(()=>{setSaved(false);setSec(null);},1500);
   };
@@ -3323,6 +3447,7 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
         <div>
           <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Full name</label>
           <Inp value={name} onChange={e=>setName(e.target.value)}/>
+          <p style={{fontSize:"0.76rem",color:"#aaa",marginTop:6,lineHeight:1.5}}>Your name is used to match your bank account, so it can't be changed after you request a withdrawal. Contact support if it needs correcting.</p>
         </div>
         <div>
           <label style={{fontSize:"0.8rem",fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Username</label>
@@ -3471,10 +3596,11 @@ const Settings = ({ goTo, customization, setCustomization, currency, profile, us
           <Tog on={toggles[item.k]} onToggle={()=>setToggles(t=>({...t,[item.k]:!t[item.k]}))}/>
         </div>
       ))}
-      <div onClick={onLogout} style={{marginTop:32,padding:"14px 16px",borderRadius:12,border:"1px solid rgba(239,68,68,0.2)",background:"#fff5f5",cursor:"pointer",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-        <Icons.logout s={16} c="#ef4444"/><p style={{color:"#ef4444",fontWeight:600,fontSize:"0.9rem"}}>Delete my account</p>
+      <div onClick={()=>!deleting&&deleteAccount()} style={{marginTop:32,padding:"14px 16px",borderRadius:12,border:"1px solid rgba(239,68,68,0.2)",background:"#fff5f5",cursor:deleting?"default":"pointer",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:deleting?0.6:1}}>
+        <Icons.logout s={16} c="#ef4444"/><p style={{color:"#ef4444",fontWeight:600,fontSize:"0.9rem"}}>{deleting?"Deleting...":"Delete my account"}</p>
       </div>
-      <p style={{fontSize:"0.72rem",color:"#ccc",textAlign:"center",marginTop:8}}>Not wired to actually delete the account yet — currently logs you out.</p>
+      {deleteErr && <p style={{fontSize:"0.8rem",color:"#ef4444",textAlign:"center",marginTop:10,lineHeight:1.5}}>{deleteErr}</p>}
+      <p style={{fontSize:"0.72rem",color:"#aaa",textAlign:"center",marginTop:8,lineHeight:1.5}}>Deletes your personal details and received messages. Your wallet must be empty first.</p>
     </SubPage>
   );
 
@@ -3750,7 +3876,7 @@ export default function App() {
     terms:         <Terms goTo={goTo} fromSend={false}/>,
     privacy:       <Terms goTo={goTo} fromSend={false} kind="privacy"/>,
     inbox:         <Inbox goTo={goTo} currency={currency} isMinor={isMinor} userId={session?.user?.id} username={profile?.username||"yourname"} hintsDisabled={platformSettings?.hint_purchases_enabled===false}/>,
-    send:          <SendPage goTo={goTo} params={params} receiverCurrency={currency}/>,
+    send:          <SendPage goTo={goTo} params={params} receiverCurrency={currency} userId={session?.user?.id} profile={profile}/>,
     stats:         <Stats goTo={goTo} userId={session?.user?.id}/>,
     wallet:        <Wallet goTo={goTo} currency={currency} userId={session?.user?.id} userName={profile?.name} withdrawalsDisabled={platformSettings?.withdrawals_enabled===false}/>,
     games:         <Games goTo={goTo} mysteryFrozen={platformSettings?.mystery_lobby_frozen} quizFrozen={platformSettings?.stake_win_frozen} userId={session?.user?.id}/>,
